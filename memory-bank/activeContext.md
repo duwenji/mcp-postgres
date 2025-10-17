@@ -3,17 +3,22 @@
 ## 現在の作業状況
 
 ### 現在の焦点
-- **Memory Bankの初期化完了**: プロジェクトの基礎ドキュメントを作成済み
+- **Dockerテスト環境の修正完了**: uvインストールエラーの解決
 - **次のステップ**: PostgreSQL MCPサーバーの実装開始
 
 ### 最近の変更
-1. **Memory Bankファイルの作成** (完了)
+1. **Dockerテスト環境の修正** (完了)
+   - **問題**: uvのインストールスクリプトが変更され、インストール先が `/root/.cargo/bin/uv` から `/root/.local/bin/uv` に移動
+   - **修正**: Dockerfile.testのuvインストールコマンドを更新
+   - **追加修正**: README.mdファイルのコピーを追加（pyproject.tomlのreadme設定に対応）
+
+2. **Memory Bankファイルの作成** (完了)
    - `projectbrief.md`: プロジェクト概要と要件定義
    - `productContext.md`: 製品コンテキストとユースケース
    - `techContext.md`: 技術スタックと開発環境
    - `systemPatterns.md`: システムアーキテクチャと設計パターン
 
-2. **技術スタックの決定** (完了)
+3. **技術スタックの決定** (完了)
    - プログラミング言語: Python
    - データベース接続: psycopg2
    - MCPフレームワーク: 標準MCPプロトコル
