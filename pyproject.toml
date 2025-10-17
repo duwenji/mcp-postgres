@@ -66,5 +66,11 @@ asyncio_mode = "auto"
 packages = ["src"]
 
 [tool.uv]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+]
 # UV-specific configuration
 # This enables better integration with UV package manager

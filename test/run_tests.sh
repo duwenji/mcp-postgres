@@ -47,13 +47,13 @@ check_docker() {
 # Function to run unit tests
 run_unit_tests() {
     print_info "Running unit tests..."
-    python -m pytest test/unit/ -v --tb=short --cov=src --cov-report=term-missing
+    uv run python -m pytest test/unit/ -v --tb=short --cov=src --cov-report=term-missing
 }
 
 # Function to run integration tests
 run_integration_tests() {
     print_info "Running integration tests..."
-    RUN_INTEGRATION_TESTS=1 python -m pytest test/integration/ -v --tb=short -m integration
+    RUN_INTEGRATION_TESTS=1 uv run python -m pytest test/integration/ -v --tb=short -m integration
 }
 
 # Function to run all tests with Docker
