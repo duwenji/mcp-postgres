@@ -1,0 +1,44 @@
+version: '3.8'
+
+services:
+  postgres-test:
+    image: postgres:15
+    container_name: postgres-mcp-test
+    environment:
+      POSTGRES_DB: mcp_test_db
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_HOST_AUTH_METHOD: trust
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+      - ./init-test-db.sql:/docker-entrypoint-initdb.d/init-test-db.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U test_user -d mcp_test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  test-runner:
+    build:
+      context: ../../
+      dockerfile: test/docker/Dockerfile.test
+    container_name: mcp-test-runner
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    environment:
+      POSTGRES_HOST: postgres-test
+      POSTGRES_PORT: 5432
+      POSTGRES_DB: mcp_test_db
+      POSTGRES_USER: test_user
+      POSTGRES_PASSWORD: test_password
+      POSTGRES_SSL_MODE: disable
+    volumes:
+      - ../../src:/app/src
+      - ../../test:/app/test
+    command: ["pytest", "test/", "-v", "--tb=short", "--cov=src", "--cov-report=html"]
+
+volumes:
+  postgres_test_data:
