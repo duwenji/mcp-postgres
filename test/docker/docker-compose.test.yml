@@ -38,7 +38,7 @@ services:
     volumes:
       - ../../src:/app/src
       - ../../test:/app/test
-    command: ["pytest", "test/", "-v", "--tb=short", "--cov=src", "--cov-report=html"]
+    command: ["uv", "run", "pytest", "test/", "-v", "--tb=short", "--cov=src", "--cov-report=html"]
 
 volumes:
   postgres_test_data:

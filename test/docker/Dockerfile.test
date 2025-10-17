@@ -22,7 +22,7 @@ COPY uv.lock .
 COPY README.md .
 
 # Install dependencies using uv
-RUN uv sync --frozen --no-dev
+RUN uv sync --frozen
 
 # Copy test files
 COPY test/ /app/test/
