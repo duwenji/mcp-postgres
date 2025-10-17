@@ -20,11 +20,12 @@
 ### 前提条件
 - Python 3.8以上
 - PostgreSQL 12以上
-- pip (Pythonパッケージマネージャー)
+- [uv](https://github.com/astral-sh/uv) (Pythonパッケージマネージャー)
 
 ### 推奨開発ツール
 - **エディター**: VS Code with Python拡張機能
-- **仮想環境**: venvまたはconda
+- **パッケージマネージャー**: uv
+- **仮想環境**: uvによる自動管理
 - **バージョン管理**: Git
 - **テストフレームワーク**: pytest
 
@@ -47,9 +48,14 @@
 
 ## 依存関係
 
+### 依存関係管理
+- **パッケージマネージャー**: uv
+- **設定ファイル**: `pyproject.toml`
+- **ビルドシステム**: hatchling
+
 ### コア依存関係
 ```python
-# requirements.txt の想定内容
+# pyproject.toml の依存関係
 mcp>=1.0.0
 psycopg2-binary>=2.9.0
 pydantic>=2.0.0
@@ -58,11 +64,16 @@ python-dotenv>=1.0.0
 
 ### 開発依存関係
 ```python
-# requirements-dev.txt の想定内容
+# pyproject.toml の開発依存関係
 pytest>=7.0.0
+pytest-asyncio>=0.21.0
+pytest-cov>=4.0.0
+pytest-mock>=3.0.0
+pytest-xdist>=3.0.0
 black>=23.0.0
 flake8>=6.0.0
 mypy>=1.0.0
+freezegun>=1.0.0
 ```
 
 ## ツール使用パターン

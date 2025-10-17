@@ -16,7 +16,6 @@ test/
 ├── integration/            # 統合テスト
 │   └── test_database.py    # データベース操作のテスト
 ├── conftest.py             # pytest設定
-├── requirements-test.txt   # テスト依存関係
 ├── run_tests.sh           # Linux/Macテストランナー
 ├── run_tests.bat          # Windowsテストランナー
 └── README.md              # このファイル
