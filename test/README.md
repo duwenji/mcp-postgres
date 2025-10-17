@@ -105,6 +105,99 @@ cd test/docker
 docker-compose -f docker-compose.test.yml down
 ```
 
+## PostgreSQLテスト環境へのアクセス方法
+
+### テスト環境の構成
+
+Docker Composeで構築されたテスト環境：
+- **postgres-test**: PostgreSQL 15データベース
+- ポート: `5433` (ホスト) → `5432` (コンテナ)
+- データベース: `mcp_test_db`
+- ユーザー: `test_user`
+- パスワード: `test_password`
+
+### アクセス方法
+
+#### 1. Docker環境の起動
+
+```bash
+# テストディレクトリに移動
+cd test\docker
+
+# Docker環境を起動
+docker-compose -f docker-compose.test.yml up -d
+```
+
+#### 2. Dockerコンテナ内でpsqlを使用（推奨）
+
+```bash
+# PostgreSQLコンテナ内でpsqlを実行
+docker exec -it postgres-mcp-test psql -U test_user -d mcp_test_db
+```
+
+これでPostgreSQLに直接接続できます。コンテナ内にはpsqlが含まれているため、ローカルにインストールする必要はありません。
+
+#### 3. Pythonスクリプトを使用した接続
+
+以下のPythonスクリプトを作成して接続：
+
+```python
+# test_connection.py
+import psycopg2
+
+try:
+    conn = psycopg2.connect(
+        host="localhost",
+        port=5433,
+        database="mcp_test_db",
+        user="test_user",
+        password="test_password"
+    )
+    
+    cursor = conn.cursor()
+    cursor.execute("SELECT version();")
+    version = cursor.fetchone()
+    print(f"PostgreSQLバージョン: {version[0]}")
+    
+    # テーブル一覧を表示
+    cursor.execute("""
+        SELECT table_name 
+        FROM information_schema.tables 
+        WHERE table_schema = 'public'
+    """)
+    tables = cursor.fetchall()
+    print("利用可能なテーブル:")
+    for table in tables:
+        print(f"  - {table[0]}")
+    
+    cursor.close()
+    conn.close()
+    print("接続成功！")
+    
+except Exception as e:
+    print(f"接続エラー: {e}")
+```
+
+実行方法：
+```bash
+uv run python test_connection.py
+```
+
+#### 4. 別のDockerコンテナから接続
+
+```bash
+# 一時的なPostgreSQLクライアントコンテナを作成
+docker run -it --rm --network mcp-postgres_test_default postgres:15 psql -h postgres-test -U test_user -d mcp_test_db
+```
+
+### 環境の停止
+
+```bash
+# テストディレクトリで
+cd test\docker
+docker-compose -f docker-compose.test.yml down
+```
+
 ## テストデータベース
 
 テスト環境では以下のテーブルが自動的に作成されます：
