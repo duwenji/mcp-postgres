@@ -4,11 +4,10 @@ Configuration management for PostgreSQL MCP Server
 
 import os
 from typing import Optional
-from pydantic import Field
-from pydantic_settings import BaseSettings
+from pydantic import BaseModel, Field
 
 
-class PostgresConfig(BaseSettings):
+class PostgresConfig(BaseModel):
     """PostgreSQL connection configuration"""
     
     host: str = Field(default="localhost", description="PostgreSQL host")
@@ -22,13 +21,9 @@ class PostgresConfig(BaseSettings):
     pool_size: int = Field(default=5, description="Connection pool size")
     max_overflow: int = Field(default=10, description="Maximum pool overflow")
     connect_timeout: int = Field(default=30, description="Connection timeout in seconds")
-    
-    class Config:
-        env_prefix = "POSTGRES_"
-        case_sensitive = False
 
 
-class ServerConfig(BaseSettings):
+class ServerConfig(BaseModel):
     """MCP Server configuration"""
     
     log_level: str = Field(default="INFO", description="Logging level")
@@ -36,10 +31,6 @@ class ServerConfig(BaseSettings):
     
     # PostgreSQL configuration
     postgres: PostgresConfig = Field(default_factory=PostgresConfig)
-    
-    class Config:
-        env_prefix = "MCP_"
-        case_sensitive = False
 
 
 def load_config() -> ServerConfig:
@@ -56,15 +47,48 @@ def load_config() -> ServerConfig:
     from dotenv import load_dotenv
     load_dotenv()
     
-    config = ServerConfig()
+    # Load configuration from environment variables
+    host = os.environ.get("POSTGRES_HOST", "localhost")
+    port = int(os.environ.get("POSTGRES_PORT", "5432"))
+    database = os.environ.get("POSTGRES_DB", "postgres")
+    username = os.environ.get("POSTGRES_USER", "postgres")
+    password = os.environ.get("POSTGRES_PASSWORD", "")
+    ssl_mode = os.environ.get("POSTGRES_SSL_MODE", "prefer")
+    pool_size = int(os.environ.get("POSTGRES_POOL_SIZE", "5"))
+    max_overflow = int(os.environ.get("POSTGRES_MAX_OVERFLOW", "10"))
+    connect_timeout = int(os.environ.get("POSTGRES_CONNECT_TIMEOUT", "30"))
     
     # Validate required PostgreSQL configuration
-    if not config.postgres.host:
+    if not host:
         raise ValueError("POSTGRES_HOST environment variable is required")
-    if not config.postgres.database:
+    if not database:
         raise ValueError("POSTGRES_DB environment variable is required")
-    if not config.postgres.username:
+    if not username:
         raise ValueError("POSTGRES_USER environment variable is required")
+    
+    # Create PostgresConfig with loaded values
+    postgres_config = PostgresConfig(
+        host=host,
+        port=port,
+        database=database,
+        username=username,
+        password=password,
+        ssl_mode=ssl_mode,
+        pool_size=pool_size,
+        max_overflow=max_overflow,
+        connect_timeout=connect_timeout
+    )
+    
+    # Load server configuration
+    log_level = os.environ.get("MCP_LOG_LEVEL", "INFO")
+    debug = os.environ.get("MCP_DEBUG", "false").lower() == "true"
+    
+    # Create ServerConfig with the loaded PostgresConfig
+    config = ServerConfig(
+        log_level=log_level,
+        debug=debug,
+        postgres=postgres_config
+    )
     
     return config
 
@@ -81,7 +105,7 @@ def get_connection_string(config: PostgresConfig) -> str:
     """
     base_conn_str = f"postgresql://{config.username}:{config.password}@{config.host}:{config.port}/{config.database}"
     
-    # Add SSL mode if specified
+    # Add SSL mode if specified and not default "prefer"
     if config.ssl_mode and config.ssl_mode != "prefer":
         base_conn_str += f"?sslmode={config.ssl_mode}"
     

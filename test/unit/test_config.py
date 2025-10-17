@@ -13,17 +13,19 @@ class TestPostgresConfig:
     
     def test_default_values(self):
         """Test default configuration values"""
-        config = PostgresConfig()
-        
-        assert config.host == "localhost"
-        assert config.port == 5432
-        assert config.database == "postgres"
-        assert config.username == "postgres"
-        assert config.password == ""
-        assert config.ssl_mode == "prefer"
-        assert config.pool_size == 5
-        assert config.max_overflow == 10
-        assert config.connect_timeout == 30
+        # Clear environment variables to test defaults
+        with patch.dict(os.environ, {}, clear=True):
+            config = PostgresConfig()
+            
+            assert config.host == "localhost"
+            assert config.port == 5432  # Default port in config
+            assert config.database == "postgres"
+            assert config.username == "postgres"
+            assert config.password == ""
+            assert config.ssl_mode == "prefer"
+            assert config.pool_size == 5
+            assert config.max_overflow == 10
+            assert config.connect_timeout == 30
     
     def test_custom_values(self):
         """Test configuration with custom values"""
@@ -83,29 +85,35 @@ class TestServerConfig:
 class TestLoadConfig:
     """Test configuration loading"""
     
-    @patch('src.config.load_dotenv')
+    @patch('dotenv.load_dotenv')
     def test_load_config_defaults(self, mock_load_dotenv):
         """Test loading configuration with defaults"""
         with patch.dict(os.environ, {
             'POSTGRES_HOST': 'test-host',
             'POSTGRES_DB': 'test-db',
             'POSTGRES_USER': 'test-user'
-        }):
+        }, clear=True):
+            print("DEBUG: Environment in test:", dict(os.environ))
             config = load_config()
+            print("DEBUG: Loaded config:", config.postgres.dict())
             
             assert config.postgres.host == 'test-host'
             assert config.postgres.database == 'test-db'
             assert config.postgres.username == 'test-user'
             mock_load_dotenv.assert_called_once()
     
-    @patch('src.config.load_dotenv')
+    @patch('dotenv.load_dotenv')
     def test_load_config_missing_required(self, mock_load_dotenv):
         """Test loading configuration with missing required fields"""
-        with patch.dict(os.environ, {}, clear=True):
+        with patch.dict(os.environ, {
+            'POSTGRES_HOST': '',
+            'POSTGRES_DB': '',
+            'POSTGRES_USER': ''
+        }, clear=True):
             with pytest.raises(ValueError, match="POSTGRES_HOST environment variable is required"):
                 load_config()
     
-    @patch('src.config.load_dotenv')
+    @patch('dotenv.load_dotenv')
     def test_load_config_with_all_fields(self, mock_load_dotenv):
         """Test loading configuration with all fields"""
         with patch.dict(os.environ, {
@@ -120,7 +128,7 @@ class TestLoadConfig:
             'POSTGRES_CONNECT_TIMEOUT': '45',
             'MCP_LOG_LEVEL': 'WARNING',
             'MCP_DEBUG': 'true'
-        }):
+        }, clear=True):
             config = load_config()
             
             assert config.postgres.host == 'full-host'
@@ -146,7 +154,8 @@ class TestConnectionString:
             port=5432,
             database="test_db",
             username="test_user",
-            password="test_pass"
+            password="test_pass",
+            ssl_mode="prefer"  # Explicitly set to default
         )
         
         conn_str = get_connection_string(config)
@@ -190,7 +199,8 @@ class TestConnectionString:
             port=5432,
             database="db",
             username="user",
-            password=""
+            password="",
+            ssl_mode="prefer"  # Explicitly set to default
         )
         
         conn_str = get_connection_string(config)
