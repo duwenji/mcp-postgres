@@ -148,15 +148,30 @@ POSTGRES_MAX_OVERFLOW=10
 ```
 mcp-postgres/
 ├── src/
-│   ├── main.py          # MCPサーバーエントリーポイント
-│   ├── config.py        # 設定管理
-│   ├── database.py      # データベース接続と操作
-│   └── tools/
-│       ├── __init__.py
-│       └── crud_tools.py # CRUD操作ツール
-├── pyproject.toml       # プロジェクト設定と依存関係
-├── .env.example         # 環境変数テンプレート
-└── README.md
+│   └── mcp_postgres_duwenji/     # メインパッケージ
+│       ├── __init__.py           # パッケージ初期化
+│       ├── main.py               # MCPサーバーエントリーポイント
+│       ├── config.py             # 設定管理
+│       ├── database.py           # データベース接続と操作
+│       ├── resources.py          # リソース管理
+│       └── tools/                # MCPツール定義
+│           ├── __init__.py
+│           ├── crud_tools.py     # CRUD操作ツール
+│           └── schema_tools.py   # スキーマ操作ツール
+├── test/                         # テスト関連
+│   ├── unit/                     # ユニットテスト
+│   ├── integration/              # 統合テスト
+│   ├── docker/                   # Dockerテスト環境
+│   └── docs/                     # テストドキュメント
+├── docs/                         # プロジェクトドキュメント
+├── examples/                     # 設定例
+├── scripts/                      # ユーティリティスクリプト
+├── memory-bank/                  # プロジェクトメモリバンク
+├── pyproject.toml                # プロジェクト設定と依存関係
+├── uv.lock                       # uv依存関係ロックファイル
+├── .env.example                  # 環境変数テンプレート
+├── README.md                     # 英語README
+└── README_ja.md                  # 日本語README
 ```
 
 ### サーバーの実行

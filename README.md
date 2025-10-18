@@ -123,15 +123,30 @@ Once configured, you can use the MCP tools through your AI assistant:
 ```
 mcp-postgres/
 ├── src/
-│   ├── main.py          # MCP server entry point
-│   ├── config.py        # Configuration management
-│   ├── database.py      # Database connection and operations
-│   └── tools/
-│       ├── __init__.py
-│       └── crud_tools.py # CRUD operation tools
-├── pyproject.toml       # Project configuration and dependencies
-├── .env.example         # Environment variables template
-└── README.md
+│   └── mcp_postgres_duwenji/     # Main package
+│       ├── __init__.py           # Package initialization
+│       ├── main.py               # MCP server entry point
+│       ├── config.py             # Configuration management
+│       ├── database.py           # Database connection and operations
+│       ├── resources.py          # Resource management
+│       └── tools/                # MCP tool definitions
+│           ├── __init__.py
+│           ├── crud_tools.py     # CRUD operation tools
+│           └── schema_tools.py   # Schema operation tools
+├── test/                         # Testing related
+│   ├── unit/                     # Unit tests
+│   ├── integration/              # Integration tests
+│   ├── docker/                   # Docker test environment
+│   └── docs/                     # Test documentation
+├── docs/                         # Project documentation
+├── examples/                     # Configuration examples
+├── scripts/                      # Utility scripts
+├── memory-bank/                  # Project memory bank
+├── pyproject.toml                # Project configuration and dependencies
+├── uv.lock                       # uv dependency lock file
+├── .env.example                  # Environment variables template
+├── README.md                     # English README
+└── README_ja.md                  # Japanese README
 ```
 
 ### Running the Server
@@ -139,7 +154,7 @@ mcp-postgres/
 To run the server directly for testing:
 
 ```bash
-uv run mcp-postgres-duwenji
+uv run mcp_postgres_duwenji
 ```
 
 ### Adding New Tools

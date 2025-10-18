@@ -162,7 +162,8 @@ def main():
         if not changelog_path.exists():
             print("\n注意: CHANGELOG.mdが見つかりません。変更履歴の作成を検討してください。")
         else:
-            print("\nCHANGELOG.mdを更新して、このバージョンの変更内容を記載してください。")
+            print(f"\nCHANGELOG.mdを更新して、バージョン {new_version} の変更内容を記載してください。")
+            print("変更履歴の形式はKeep a Changelogに従っています。")
     else:
         print("バージョン更新をキャンセルしました")
 

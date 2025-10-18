@@ -37,7 +37,7 @@ async def main():
     # Create MCP server
     server = Server("postgres-mcp-server")
     
-    # Register tools
+    # Get tools and handlers
     crud_tools = get_crud_tools()
     crud_handlers = get_crud_handlers()
     schema_tools = get_schema_tools()
@@ -46,10 +46,6 @@ async def main():
     # Combine all tools and handlers
     all_tools = crud_tools + schema_tools
     all_handlers = {**crud_handlers, **schema_handlers}
-    
-    for tool in all_tools:
-        server.register_tool(tool)
-        logger.info(f"Registered tool: {tool.name}")
     
     # Register tool handlers
     @server.call_tool()
@@ -69,6 +65,13 @@ async def main():
         else:
             logger.error(f"Unknown tool: {name}")
             return {"success": False, "error": f"Unknown tool: {name}"}
+    
+    # Register tools via list_tools handler
+    @server.list_tools()
+    async def handle_list_tools() -> list:
+        """List available tools"""
+        logger.info("Listing available tools")
+        return all_tools
     
     # Register resources
     database_resources = get_database_resources()
@@ -130,5 +133,10 @@ async def main():
         )
 
 
-if __name__ == "__main__":
+def cli_main():
+    """CLI entry point for uv run"""
     asyncio.run(main())
+
+
+if __name__ == "__main__":
+    cli_main()

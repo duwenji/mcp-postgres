@@ -19,7 +19,7 @@
       "args": ["run", "mcp-postgres-duwenji"],
       "env": {
         "POSTGRES_HOST": "localhost",
-        "POSTGRES_PORT": "5432",
+        "POSTGRES_PORT": "5433",
         "POSTGRES_DB": "myapp",
         "POSTGRES_USER": "myuser",
         "POSTGRES_PASSWORD": "mypassword",

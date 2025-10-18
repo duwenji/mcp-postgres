@@ -25,7 +25,7 @@ test/
 
 ### 前提条件
 
-- Python 3.8以上
+- Python 3.10以上
 - DockerとDocker Compose（統合テスト用）
 - PostgreSQL 15（ローカルテスト用）
 
