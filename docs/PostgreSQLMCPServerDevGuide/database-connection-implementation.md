@@ -441,6 +441,62 @@ def performance_test(self, iterations: int = 10) -> Dict[str, Any]:
     }
 ```
 
+## Windows環境でのPostgreSQLセットアップ
+
+### 1. PostgreSQLのインストール
+
+#### Windowsでのインストール手順
+1. **PostgreSQL公式サイトからインストーラーをダウンロード**
+   - [PostgreSQL Downloads](https://www.postgresql.org/download/windows/) から最新版をダウンロード
+
+2. **インストーラーの実行**
+   - インストールディレクトリを選択（例: `C:\Program Files\PostgreSQL\16`）
+   - データディレクトリを選択（例: `C:\Program Files\PostgreSQL\16\data`）
+   - スーパーユーザーのパスワードを設定
+   - ポート番号を設定（デフォルト: 5432）
+   - ロケール設定を選択
+
+3. **Stack Builderの実行（オプション）**
+   - 追加のツールや拡張機能をインストール
+
+### 2. WindowsサービスとしてのPostgreSQL設定
+
+#### サービスの確認
+```powershell
+# PostgreSQLサービスの状態確認
+Get-Service -Name "postgresql*"
+
+# サービスの起動
+Start-Service -Name "postgresql-x64-16"
+
+# サービスの停止
+Stop-Service -Name "postgresql-x64-16"
+```
+
+#### 環境変数の設定
+```powershell
+# PowerShellでの環境変数設定
+$env:POSTGRES_HOST="localhost"
+$env:POSTGRES_PORT=5432
+$env:POSTGRES_DB="postgres"  # デフォルトデータベース
+$env:POSTGRES_USER="postgres"  # デフォルトユーザー
+$env:POSTGRES_PASSWORD="your_password_here"
+```
+
+### 3. Windowsファイアウォール設定
+
+#### ファイアウォール例外の追加
+```powershell
+# PowerShell（管理者権限で実行）
+New-NetFirewallRule -DisplayName "PostgreSQL Server" -Direction Inbound -Protocol TCP -LocalPort 5432 -Action Allow
+```
+
+#### ファイアウォール設定の確認
+```powershell
+# 現在のファイアウォールルールを確認
+Get-NetFirewallRule -DisplayName "PostgreSQL Server"
+```
+
 ## トラブルシューティング
 
 ### よくある問題と解決策
@@ -462,5 +518,22 @@ def performance_test(self, iterations: int = 10) -> Dict[str, Any]:
 4. **認証エラー**
    - ユーザー名とパスワードを確認
    - PostgreSQLの認証設定を確認
+
+### Windows固有の問題
+
+5. **サービス起動エラー**
+   - PostgreSQLサービスが起動しているか確認
+   - イベントビューアで詳細なエラーログを確認
+   - データディレクトリの権限を確認
+
+6. **パス関連の問題**
+   - ファイルパスの長さ制限に注意
+   - スペースを含むパスを避ける
+   - バックスラッシュとスラッシュの混在に注意
+
+7. **環境変数の反映問題**
+   - 新しいPowerShellセッションを開始
+   - システムの再起動を検討
+   - 環境変数の設定方法を確認（ユーザー変数 vs システム変数）
 
 この実装により、安全で効率的なPostgreSQL接続管理が可能になります。次のステップでは、このデータベースマネージャーを使用してMCPツールを実装します。

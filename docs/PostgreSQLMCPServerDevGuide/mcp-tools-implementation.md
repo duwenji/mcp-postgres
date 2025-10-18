@@ -18,423 +18,361 @@
 - **エラーハンドリング**: 明確なエラーメッセージを提供
 - **セキュリティ**: SQLインジェクション対策を実装
 
+## 実装パターン
+
+実際のPostgreSQL MCPサーバーでは、以下のパターンを使用しています：
+
+1. **ツール定義とハンドラーの分離**: ツールの定義と実行ロジックを分離
+2. **モジュール化**: 機能ごとにモジュールを分割
+3. **レジストリパターン**: ツールとハンドラーを登録する統一された方法
+4. **動的ツール登録**: 単一の`@server.call_tool()`デコレーターで複数ツールを処理
+
 ## ツール実装の詳細
 
 ### 1. CRUDツールの実装
 
 ```python
 # src/mcp_postgres_duwenji/tools/crud_tools.py
-from mcp.server import Server
-from mcp.server.models import Tool
-from typing import Dict, Any, List, Optional
+"""
+CRUD tools for PostgreSQL MCP Server
+"""
+
 import logging
-from ..database import DatabaseManagerSingleton, QueryError
+from typing import Any, Dict, List, Optional
+from mcp import Tool
+
+from ..database import DatabaseManager, DatabaseError
+from ..config import load_config
 
 logger = logging.getLogger(__name__)
 
-def register_crud_tools(server: Server) -> None:
-    """CRUD操作ツールを登録"""
-    
-    @server.list_tools()
-    async def handle_list_tools() -> List[Tool]:
-        """利用可能なツールの一覧を返す"""
-        return [
-            Tool(
-                name="query_execute",
-                description="SQLクエリを実行し、結果を返します",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "query": {
-                            "type": "string",
-                            "description": "実行するSQLクエリ"
-                        },
-                        "parameters": {
-                            "type": "object",
-                            "description": "クエリパラメータ（オプション）",
-                            "additionalProperties": True
-                        },
-                        "timeout": {
-                            "type": "integer",
-                            "description": "クエリタイムアウト（秒、オプション）",
-                            "minimum": 1,
-                            "maximum": 300
-                        }
-                    },
-                    "required": ["query"]
-                }
-            ),
-            Tool(
-                name="insert_data",
-                description="テーブルにデータを挿入します",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "table": {
-                            "type": "string",
-                            "description": "データを挿入するテーブル名"
-                        },
-                        "data": {
-                            "type": "object",
-                            "description": "挿入するデータ",
-                            "additionalProperties": True
-                        }
-                    },
-                    "required": ["table", "data"]
-                }
-            ),
-            Tool(
-                name="update_data",
-                description="テーブルのデータを更新します",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "table": {
-                            "type": "string",
-                            "description": "データを更新するテーブル名"
-                        },
-                        "data": {
-                            "type": "object",
-                            "description": "更新するデータ",
-                            "additionalProperties": True
-                        },
-                        "conditions": {
-                            "type": "object",
-                            "description": "更新条件",
-                            "additionalProperties": True
-                        }
-                    },
-                    "required": ["table", "data", "conditions"]
-                }
-            ),
-            Tool(
-                name="delete_data",
-                description="テーブルからデータを削除します",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "table": {
-                            "type": "string",
-                            "description": "データを削除するテーブル名"
-                        },
-                        "conditions": {
-                            "type": "object",
-                            "description": "削除条件",
-                            "additionalProperties": True
-                        }
-                    },
-                    "required": ["table", "conditions"]
-                }
-            )
-        ]
-    
-    @server.call_tool()
-    async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
-        """ツールの実行"""
-        try:
-            db_manager = DatabaseManagerSingleton.get_instance()
-            
-            if name == "query_execute":
-                return await _execute_query(db_manager, arguments)
-            elif name == "insert_data":
-                return await _insert_data(db_manager, arguments)
-            elif name == "update_data":
-                return await _update_data(db_manager, arguments)
-            elif name == "delete_data":
-                return await _delete_data(db_manager, arguments)
-            else:
-                raise ValueError(f"不明なツール: {name}")
-                
-        except QueryError as e:
-            logger.error(f"クエリ実行エラー: {str(e)}")
-            return [{
-                "type": "text",
-                "text": f"クエリ実行エラー: {str(e)}"
-            }]
-        except Exception as e:
-            logger.error(f"ツール実行エラー: {str(e)}")
-            return [{
-                "type": "text",
-                "text": f"ツール実行エラー: {str(e)}"
-            }]
 
-async def _execute_query(db_manager, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """SQLクエリを実行"""
-    query = arguments.get("query", "").strip()
-    parameters = arguments.get("parameters", {})
-    timeout = arguments.get("timeout")
-    
-    # 入力バリデーション
-    if not query:
-        raise ValueError("クエリが空です")
-    
-    # 危険な操作の検出
-    _validate_query_safety(query)
-    
-    # クエリ実行
-    result = db_manager.execute_query(query, parameters, timeout)
-    
-    # 結果のフォーマット
-    if result and "rows_affected" in result[0]:
-        return [{
-            "type": "text",
-            "text": f"クエリが正常に実行されました。影響を受けた行数: {result[0]['rows_affected']}"
-        }]
-    else:
-        return [{
-            "type": "text",
-            "text": f"クエリ結果: {len(result)} 行のデータが見つかりました\n\n{_format_query_result(result)}"
-        }]
+# Tool definitions for CRUD operations
+create_entity = Tool(
+    name="create_entity",
+    description="Create a new entity (row) in a PostgreSQL table",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "table_name": {
+                "type": "string",
+                "description": "Name of the table to insert into"
+            },
+            "data": {
+                "type": "object",
+                "description": "Dictionary of column names and values to insert",
+                "additionalProperties": True
+            }
+        },
+        "required": ["table_name", "data"]
+    }
+)
 
-async def _insert_data(db_manager, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """データを挿入"""
-    table = arguments["table"]
-    data = arguments["data"]
-    
-    # 入力バリデーション
-    _validate_table_name(table)
-    _validate_data_dict(data)
-    
-    # INSERTクエリの構築
-    columns = ", ".join(data.keys())
-    placeholders = ", ".join([f"%({key})s" for key in data.keys()])
-    query = f"INSERT INTO {table} ({columns}) VALUES ({placeholders})"
-    
-    # クエリ実行
-    result = db_manager.execute_query(query, data)
-    
-    return [{
-        "type": "text",
-        "text": f"データが正常に挿入されました。テーブル: {table}"
-    }]
 
-async def _update_data(db_manager, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """データを更新"""
-    table = arguments["table"]
-    data = arguments["data"]
-    conditions = arguments["conditions"]
-    
-    # 入力バリデーション
-    _validate_table_name(table)
-    _validate_data_dict(data)
-    _validate_conditions(conditions)
-    
-    # UPDATEクエリの構築
-    set_clause = ", ".join([f"{key} = %({key})s" for key in data.keys()])
-    where_clause = " AND ".join([f"{key} = %(condition_{key})s" for key in conditions.keys()])
-    
-    # パラメータの結合
-    all_params = data.copy()
-    for key, value in conditions.items():
-        all_params[f"condition_{key}"] = value
-    
-    query = f"UPDATE {table} SET {set_clause} WHERE {where_clause}"
-    
-    # クエリ実行
-    result = db_manager.execute_query(query, all_params)
-    
-    return [{
-        "type": "text",
-        "text": f"データが正常に更新されました。テーブル: {table}, 影響を受けた行数: {result[0]['rows_affected']}"
-    }]
+read_entity = Tool(
+    name="read_entity",
+    description="Read entities from a PostgreSQL table with optional conditions",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "table_name": {
+                "type": "string",
+                "description": "Name of the table to query"
+            },
+            "conditions": {
+                "type": "object",
+                "description": "Optional WHERE conditions as key-value pairs",
+                "additionalProperties": True
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of rows to return (default: 100)",
+                "default": 100,
+                "minimum": 1,
+                "maximum": 1000
+            }
+        },
+        "required": ["table_name"]
+    }
+)
 
-async def _delete_data(db_manager, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """データを削除"""
-    table = arguments["table"]
-    conditions = arguments["conditions"]
-    
-    # 入力バリデーション
-    _validate_table_name(table)
-    _validate_conditions(conditions)
-    
-    # DELETEクエリの構築
-    where_clause = " AND ".join([f"{key} = %({key})s" for key in conditions.keys()])
-    query = f"DELETE FROM {table} WHERE {where_clause}"
-    
-    # クエリ実行
-    result = db_manager.execute_query(query, conditions)
-    
-    return [{
-        "type": "text",
-        "text": f"データが正常に削除されました。テーブル: {table}, 削除された行数: {result[0]['rows_affected']}"
-    }]
 
-def _validate_query_safety(query: str) -> None:
-    """クエリの安全性を検証"""
-    dangerous_operations = ['DROP', 'TRUNCATE', 'ALTER', 'CREATE', 'GRANT', 'REVOKE']
-    upper_query = query.upper()
-    
-    for operation in dangerous_operations:
-        if operation in upper_query:
-            raise ValueError(f"危険な操作 '{operation}' は許可されていません")
+update_entity = Tool(
+    name="update_entity",
+    description="Update entities in a PostgreSQL table",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "table_name": {
+                "type": "string",
+                "description": "Name of the table to update"
+            },
+            "conditions": {
+                "type": "object",
+                "description": "WHERE conditions to identify which rows to update",
+                "additionalProperties": True
+            },
+            "updates": {
+                "type": "object",
+                "description": "Dictionary of columns and values to update",
+                "additionalProperties": True
+            }
+        },
+        "required": ["table_name", "conditions", "updates"]
+    }
+)
 
-def _validate_table_name(table: str) -> None:
-    """テーブル名の検証"""
-    if not table or not table.strip():
-        raise ValueError("テーブル名が空です")
-    
-    # 基本的なSQLインジェクション対策
-    if any(char in table for char in [';', "'", '"', '--', '/*', '*/']):
-        raise ValueError("無効なテーブル名です")
 
-def _validate_data_dict(data: Dict[str, Any]) -> None:
-    """データ辞書の検証"""
-    if not data:
-        raise ValueError("データが空です")
-    
-    for key, value in data.items():
-        if not key or not key.strip():
-            raise ValueError("データキーが空です")
+delete_entity = Tool(
+    name="delete_entity",
+    description="Delete entities from a PostgreSQL table",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "table_name": {
+                "type": "string",
+                "description": "Name of the table to delete from"
+            },
+            "conditions": {
+                "type": "object",
+                "description": "WHERE conditions to identify which rows to delete",
+                "additionalProperties": True
+            }
+        },
+        "required": ["table_name", "conditions"]
+    }
+)
 
-def _validate_conditions(conditions: Dict[str, Any]) -> None:
-    """条件の検証"""
-    if not conditions:
-        raise ValueError("条件が指定されていません")
 
-def _format_query_result(result: List[Dict[str, Any]]) -> str:
-    """クエリ結果を整形"""
-    if not result:
-        return "結果は空です"
-    
-    # ヘッダーの作成
-    headers = list(result[0].keys())
-    header_line = " | ".join(headers)
-    separator = "-" * len(header_line)
-    
-    # データ行の作成
-    rows = []
-    for row in result[:10]:  # 最初の10行のみ表示
-        row_data = [str(row.get(col, "")) for col in headers]
-        rows.append(" | ".join(row_data))
-    
-    # 結果の組み立て
-    formatted = f"{header_line}\n{separator}\n"
-    formatted += "\n".join(rows)
-    
-    if len(result) > 10:
-        formatted += f"\n\n... 他 {len(result) - 10} 行"
-    
-    return formatted
+# Tool handlers
+async def handle_create_entity(table_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
+    """Handle create entity tool execution"""
+    try:
+        config = load_config()
+        db_manager = DatabaseManager(config.postgres)
+        
+        # Connect to database
+        db_manager.connection.connect()
+        
+        result = db_manager.create_entity(table_name, data)
+        
+        # Disconnect from database
+        db_manager.connection.disconnect()
+        
+        return result
+        
+    except DatabaseError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error(f"Unexpected error in create_entity: {e}")
+        return {"success": False, "error": f"Internal server error: {str(e)}"}
+
+
+async def handle_read_entity(
+    table_name: str, 
+    conditions: Optional[Dict[str, Any]] = None,
+    limit: int = 100
+) -> Dict[str, Any]:
+    """Handle read entity tool execution"""
+    try:
+        config = load_config()
+        db_manager = DatabaseManager(config.postgres)
+        
+        # Connect to database
+        db_manager.connection.connect()
+        
+        result = db_manager.read_entity(table_name, conditions, limit)
+        
+        # Disconnect from database
+        db_manager.connection.disconnect()
+        
+        return result
+        
+    except DatabaseError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error(f"Unexpected error in read_entity: {e}")
+        return {"success": False, "error": f"Internal server error: {str(e)}"}
+
+
+async def handle_update_entity(
+    table_name: str, 
+    conditions: Dict[str, Any], 
+    updates: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Handle update entity tool execution"""
+    try:
+        config = load_config()
+        db_manager = DatabaseManager(config.postgres)
+        
+        # Connect to database
+        db_manager.connection.connect()
+        
+        result = db_manager.update_entity(table_name, conditions, updates)
+        
+        # Disconnect from database
+        db_manager.connection.disconnect()
+        
+        return result
+        
+    except DatabaseError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error(f"Unexpected error in update_entity: {e}")
+        return {"success": False, "error": f"Internal server error: {str(e)}"}
+
+
+async def handle_delete_entity(
+    table_name: str, 
+    conditions: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Handle delete entity tool execution"""
+    try:
+        config = load_config()
+        db_manager = DatabaseManager(config.postgres)
+        
+        # Connect to database
+        db_manager.connection.connect()
+        
+        result = db_manager.delete_entity(table_name, conditions)
+        
+        # Disconnect from database
+        db_manager.connection.disconnect()
+        
+        return result
+        
+    except DatabaseError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error(f"Unexpected error in delete_entity: {e}")
+        return {"success": False, "error": f"Internal server error: {str(e)}"}
+
+
+# Tool registry
+def get_crud_tools() -> List[Tool]:
+    """Get all CRUD tools"""
+    return [
+        create_entity,
+        read_entity,
+        update_entity,
+        delete_entity,
+    ]
+
+
+def get_crud_handlers() -> Dict[str, callable]:
+    """Get tool handlers for CRUD operations"""
+    return {
+        "create_entity": handle_create_entity,
+        "read_entity": handle_read_entity,
+        "update_entity": handle_update_entity,
+        "delete_entity": handle_delete_entity,
+    }
 ```
 
 ### 2. スキーマツールの実装
 
 ```python
 # src/mcp_postgres_duwenji/tools/schema_tools.py
-from mcp.server import Server
-from mcp.server.models import Tool
-from typing import Dict, Any, List
+"""
+Schema tools for PostgreSQL MCP Server
+"""
+
 import logging
-from ..database import DatabaseManagerSingleton
+from typing import Any, Dict, List, Optional
+from mcp import Tool
+
+from ..database import DatabaseManager, DatabaseError
+from ..config import load_config
 
 logger = logging.getLogger(__name__)
 
-def register_schema_tools(server: Server) -> None:
-    """スキーマ情報ツールを登録"""
-    
-    @server.list_tools()
-    async def handle_list_tools() -> List[Tool]:
-        return [
-            Tool(
-                name="get_tables",
-                description="データベースのテーブル一覧を取得します",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "schema": {
-                            "type": "string",
-                            "description": "スキーマ名（オプション、デフォルト: public）",
-                            "default": "public"
-                        }
-                    }
-                }
-            ),
-            Tool(
-                name="get_table_schema",
-                description="指定したテーブルの詳細なスキーマ情報を取得します",
-                inputSchema={
-                    "type": "object",
-                    "properties": {
-                        "table": {
-                            "type": "string",
-                            "description": "テーブル名"
-                        },
-                        "schema": {
-                            "type": "string",
-                            "description": "スキーマ名（オプション、デフォルト: public）",
-                            "default": "public"
-                        }
-                    },
-                    "required": ["table"]
-                }
-            ),
-            Tool(
-                name="get_database_info",
-                description="データベースの基本情報を取得します",
-                inputSchema={"type": "object", "properties": {}}
-            )
-        ]
-    
-    @server.call_tool()
-    async def handle_call_tool(name: str, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
-        try:
-            db_manager = DatabaseManagerSingleton.get_instance()
-            
-            if name == "get_tables":
-                return await _get_tables(db_manager, arguments)
-            elif name == "get_table_schema":
-                return await _get_table_schema(db_manager, arguments)
-            elif name == "get_database_info":
-                return await _get_database_info(db_manager)
-            else:
-                raise ValueError(f"不明なツール: {name}")
-                
-        except Exception as e:
-            logger.error(f"スキーマツール実行エラー: {str(e)}")
-            return [{
-                "type": "text",
-                "text": f"スキーマ情報の取得に失敗しました: {str(e)}"
-            }]
 
-async def _get_tables(db_manager, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """テーブル一覧を取得"""
-    schema = arguments.get("schema", "public")
-    
-    query = """
-        SELECT 
-            table_name,
-            table_type,
-            table_schema
-        FROM information_schema.tables 
-        WHERE table_schema = %s
-        ORDER BY table_name
-    """
-    
-    result = db_manager.execute_query(query, {"schema": schema})
-    
-    if not result:
-        return [{
-            "type": "text",
-            "text": f"スキーマ '{schema}' にテーブルはありません"
-        }]
-    
-    table_list = "\n".join([
-        f"- {row['table_name']} ({row['table_type']})" 
-        for row in result
-    ])
-    
-    return [{
-        "type": "text",
-        "text": f"スキーマ '{schema}' のテーブル一覧:\n\n{table_list}"
-    }]
+# Tool definitions for schema operations
+get_tables = Tool(
+    name="get_tables",
+    description="Get list of all tables in the PostgreSQL database",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "schema": {
+                "type": "string",
+                "description": "Schema name to filter tables (default: 'public')",
+                "default": "public"
+            }
+        },
+        "required": []
+    }
+)
 
-async def _get_table_schema(db_manager, arguments: Dict[str, Any]) -> List[Dict[str, Any]]:
-    """テーブルの詳細スキーマを取得"""
-    table = arguments["table"]
-    schema = arguments.get("schema", "public")
-    
-    # カラム情報の取得
-    columns_query = """
+
+get_table_schema = Tool(
+    name="get_table_schema",
+    description="Get detailed schema information for a specific table",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "table_name": {
+                "type": "string",
+                "description": "Name of the table to get schema for"
+            },
+            "schema": {
+                "type": "string",
+                "description": "Schema name (default: 'public')",
+                "default": "public"
+            }
+        },
+        "required": ["table_name"]
+    }
+)
+
+
+get_database_info = Tool(
+    name="get_database_info",
+    description="Get database metadata and version information",
+    inputSchema={
+        "type": "object",
+        "properties": {},
+        "required": []
+    }
+)
+
+
+# Tool handlers
+async def handle_get_tables(schema: str = "public") -> Dict[str, Any]:
+    """Handle get_tables tool execution"""
+    try:
+        config = load_config()
+        db_manager = DatabaseManager(config.postgres)
+        
+        # Connect to database
+        db_manager.connection.connect()
+        
+        # Use existing get_tables method
+        result = db_manager.get_tables()
+        
+        # Disconnect from database
+        db_manager.connection.disconnect()
+        
+        return result
+        
+    except DatabaseError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error(f"Unexpected error in get_tables: {e}")
+        return {"success": False, "error": f"Internal server error: {str(e)}"}
+
+
+async def handle_get_table_schema(table_name: str, schema: str = "public") -> Dict[str, Any]:
+    """Handle get_table_schema tool execution"""
+    try:
+        config = load_config()
+        db_manager = DatabaseManager(config.postgres)
+        
+        # Connect to database
+        db_manager.connection.connect()
+        
+        # Query to get table schema information
+        query = """
         SELECT 
             column_name,
             data_type,
@@ -446,74 +384,262 @@ async def _get_table_schema(db_manager, arguments: Dict[str, Any]) -> List[Dict[
         FROM information_schema.columns 
         WHERE table_schema = %s AND table_name = %s
         ORDER BY ordinal_position
-    """
-    
-    columns = db_manager.execute_query(columns_query, {
-        "schema": schema,
-        "table": table
-    })
-    
-    if not columns:
-        return [{
-            "type": "text",
-            "text": f"テーブル '{schema}.{table}' が見つかりません"
-        }]
-    
-    # 制約情報の取得
-    constraints_query = """
+        """
+        
+        results = db_manager.connection.execute_query(query, (schema, table_name))
+        
+        # Get table constraints
+        constraints_query = """
         SELECT 
-            constraint_name,
-            constraint_type
-        FROM information_schema.table_constraints 
-        WHERE table_schema = %s AND table_name = %s
-    """
-    
-    constraints = db_manager.execute_query(constraints_query, {
-        "schema": schema,
-        "table": table
-    })
-    
-    # スキーマ情報のフォーマット
-    schema_info = f"テーブル: {schema}.{table}\n\n"
-    schema_info += "カラム情報:\n"
-    
-    for col in columns:
-        schema_info += f"- {col['column_name']}: {col['data_type']}"
-        if col['character_maximum_length']:
-            schema_info += f"({col['character_maximum_length']})"
-        elif col['numeric_precision']:
-            schema_info += f"({col['numeric_precision']},{col['numeric_scale'] or 0})"
+            tc.constraint_name,
+            tc.constraint_type,
+            kcu.column_name
+        FROM information_schema.table_constraints tc
+        LEFT JOIN information_schema.key_column_usage kcu
+            ON tc.constraint_name = kcu.constraint_name
+            AND tc.table_schema = kcu.table_schema
+            AND tc.table_name = kcu.table_name
+        WHERE tc.table_schema = %s AND tc.table_name = %s
+        ORDER BY tc.constraint_type, tc.constraint_name
+        """
         
-        if col['is_nullable'] == 'NO':
-            schema_info += " NOT NULL"
+        constraints = db_manager.connection.execute_query(constraints_query, (schema, table_name))
         
-        if col['column_default']:
-            schema_info += f" DEFAULT {col['column_default']}"
+        # Disconnect from database
+        db_manager.connection.disconnect()
         
-        schema_info += "\n"
-    
-    if constraints:
-        schema_info += "\n制約:\n"
-        for const in constraints:
-            schema_info += f"- {const['constraint_name']}: {const['constraint_type']}\n"
-    
-    return [{
-        "type": "text",
-        "text": schema_info
-    }]
+        return {
+            "success": True,
+            "table_name": table_name,
+            "schema": schema,
+            "columns": results,
+            "constraints": constraints
+        }
+        
+    except DatabaseError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error(f"Unexpected error in get_table_schema: {e}")
+        return {"success": False, "error": f"Internal server error: {str(e)}"}
 
-async def _get_database_info(db_manager) -> List[Dict[str, Any]]:
-    """データベース基本情報を取得"""
-    info = db_manager.get_database_info()
+
+async def handle_get_database_info() -> Dict[str, Any]:
+    """Handle get_database_info tool execution"""
+    try:
+        config = load_config()
+        db_manager = DatabaseManager(config.postgres)
+        
+        # Connect to database
+        db_manager.connection.connect()
+        
+        # Get database version
+        version_result = db_manager.connection.execute_query("SELECT version();")
+        version = version_result[0]["version"] if version_result else "Unknown"
+        
+        # Get database name and current user
+        db_info_result = db_manager.connection.execute_query(
+            "SELECT current_database(), current_user, current_schema();"
+        )
+        db_info = db_info_result[0] if db_info_result else {}
+        
+        # Get database size
+        size_result = db_manager.connection.execute_query(
+            "SELECT pg_size_pretty(pg_database_size(current_database())) as database_size;"
+        )
+        database_size = size_result[0]["database_size"] if size_result else "Unknown"
+        
+        # Get number of tables
+        tables_count_result = db_manager.connection.execute_query(
+            "SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = 'public';"
+        )
+        table_count = tables_count_result[0]["table_count"] if tables_count_result else 0
+        
+        # Disconnect from database
+        db_manager.connection.disconnect()
+        
+        return {
+            "success": True,
+            "database_info": {
+                "version": version,
+                "database_name": db_info.get("current_database", "Unknown"),
+                "current_user": db_info.get("current_user", "Unknown"),
+                "current_schema": db_info.get("current_schema", "Unknown"),
+                "database_size": database_size,
+                "table_count": table_count
+            }
+        }
+        
+    except DatabaseError as e:
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error(f"Unexpected error in get_database_info: {e}")
+        return {"success": False, "error": f"Internal server error: {str(e)}"}
+
+
+# Tool registry
+def get_schema_tools() -> List[Tool]:
+    """Get all schema tools"""
+    return [
+        get_tables,
+        get_table_schema,
+        get_database_info,
+    ]
+
+
+def get_schema_handlers() -> Dict[str, callable]:
+    """Get tool handlers for schema operations"""
+    return {
+        "get_tables": handle_get_tables,
+        "get_table_schema": handle_get_table_schema,
+        "get_database_info": handle_get_database_info,
+    }
+```
+
+## 実装パターンの利点
+
+### 1. ツールとハンドラーの分離
+- **ツール定義**: 入力スキーマとメタデータのみを定義
+- **ハンドラー**: 実際のビジネスロジックを実装
+- **利点**: テストのしやすさ、コードの再利用性
+
+### 2. モジュール化
+- **機能ごとの分離**: CRUD操作とスキーマ情報を別モジュールに分割
+- **責務の明確化**: 各モジュールが単一の責任を持つ
+- **利点**: 保守性の向上、チーム開発の効率化
+
+### 3. レジストリパターン
+- **統一された登録方法**: `get_*_tools()`と`get_*_handlers()`で一貫性のある登録
+- **動的ツール管理**: 新しいツールの追加が容易
+- **利点**: 拡張性の確保、コードの一貫性
+
+### 4. 動的ツール登録
+- **単一のハンドラー**: すべてのツールを単一の`@server.call_tool()`で処理
+- **柔軟なルーティング**: ツール名に基づいて適切なハンドラーを選択
+- **利点**: コードの簡潔さ、エラーハンドリングの統一
+
+## ベストプラクティス
+
+### 1. 入力バリデーション
+```python
+def validate_table_name(table: str) -> None:
+    """テーブル名の検証"""
+    if not table or not table.strip():
+        raise ValueError("テーブル名が空です")
     
-    info_text = f"データベース情報:\n\n"
-    info_text += f"バージョン: {info['version']}\n"
-    info_text += f"現在のデータベース: {info['current_database']}\n"
-    info_text += f"アクティブな接続数: {info['connection_count']}\n"
-    info_text += f"接続プールサイズ: {info['pool_size']}\n"
-    info_text += f"最大オーバーフロー接続数: {info['max_overflow']}"
+    # SQLインジェクション対策
+    if any(char in table for char in [';', "'", '"', '--', '/*', '*/']):
+        raise ValueError("無効なテーブル名です")
+```
+
+### 2. エラーハンドリング
+```python
+async def handle_tool_call(name: str, arguments: dict) -> dict:
+    """ツール実行リクエストのハンドラー"""
+    try:
+        if name in all_handlers:
+            handler = all_handlers[name]
+            result = await handler(**arguments)
+            return result
+        else:
+            return {"success": False, "error": f"Unknown tool: {name}"}
+    except Exception as e:
+        logger.error(f"Tool {name} execution failed: {e}")
+        return {"success": False, "error": str(e)}
+```
+
+### 3. セキュリティ対策
+```python
+def validate_query_safety(query: str) -> None:
+    """クエリの安全性を検証"""
+    dangerous_operations = ['DROP', 'TRUNCATE', 'ALTER', 'CREATE', 'GRANT', 'REVOKE']
+    upper_query = query.upper()
     
-    return [{
-        "type": "text",
-        "text": info_text
-    }]
+    for operation in dangerous_operations:
+        if operation in upper_query:
+            raise ValueError(f"危険な操作 '{operation}' は許可されていません")
+```
+
+### 4. ロギング
+```python
+import logging
+
+logger = logging.getLogger(__name__)
+
+async def handle_tool_call(name: str, arguments: dict) -> dict:
+    """ツール実行リクエストのハンドラー"""
+    logger.info(f"Tool call: {name} with arguments: {arguments}")
+    
+    try:
+        if name in all_handlers:
+            handler = all_handlers[name]
+            result = await handler(**arguments)
+            logger.info(f"Tool {name} executed successfully")
+            return result
+        else:
+            logger.error(f"Unknown tool: {name}")
+            return {"success": False, "error": f"Unknown tool: {name}"}
+    except Exception as e:
+        logger.error(f"Tool {name} execution failed: {e}")
+        return {"success": False, "error": str(e)}
+```
+
+## Windows環境での考慮事項
+
+### 1. パス関連の問題
+```python
+# Windowsではパス区切り文字に注意
+import os
+
+# 安全なパス構築
+config_path = os.path.join('config', 'database.yaml')
+log_path = os.path.join('logs', 'mcp_server.log')
+
+# 環境変数の扱い
+database_url = os.environ.get('POSTGRES_URL', 'localhost:5432')
+```
+
+### 2. 権限関連の問題
+```python
+import sys
+import os
+
+def check_permissions():
+    """必要な権限を確認"""
+    try:
+        # ファイル書き込み権限の確認
+        test_file = 'test_permission.txt'
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        return True
+    except PermissionError:
+        logger.error("ファイル書き込み権限がありません")
+        return False
+    except Exception as e:
+        logger.error(f"権限確認エラー: {e}")
+        return False
+```
+
+### 3. 文字コード問題
+```python
+# Windowsでの文字コード問題対策
+import sys
+
+if sys.platform == 'win32':
+    # Windowsでは標準出力の文字コードを設定
+    import codecs
+    sys.stdout = codecs.getwriter('utf-8')(sys.stdout.buffer)
+    sys.stderr = codecs.getwriter('utf-8')(sys.stderr.buffer)
+```
+
+## まとめ
+
+このガイドでは、PostgreSQL MCPサーバーのツール実装方法を詳細に説明しました。実際の実装パターンに基づいたコード例を提供し、以下の重要なポイントをカバーしました：
+
+1. **ツールとハンドラーの分離**: 定義と実装の分離による保守性向上
+2. **モジュール化**: 機能ごとの責務分離による拡張性確保
+3. **レジストリパターン**: 統一されたツール登録方法
+4. **動的ツール登録**: 単一ハンドラーによる効率的な処理
+5. **Windows環境対応**: プラットフォーム固有の問題への対策
+
+これらのパターンを活用することで、堅牢で拡張性の高いMCPサーバーを開発できます。次のステップでは、リソース管理や高度な機能の実装に進みましょう。

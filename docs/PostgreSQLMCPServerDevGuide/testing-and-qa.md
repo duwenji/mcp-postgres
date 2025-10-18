@@ -32,15 +32,15 @@
 # pyproject.toml の開発依存関係
 [project.optional-dependencies]
 dev = [
-    "pytest>=8.4.2",
-    "pytest-asyncio>=0.23.0",
-    "pytest-cov>=7.0.0",
-    "pytest-mock>=3.14.0",
-    "pytest-xdist>=3.6.1",
-    "black>=24.10.0",
-    "flake8>=7.1.1",
-    "mypy>=1.13.0",
-    "freezegun>=1.5.0",
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.0.0",
+    "pytest-xdist>=3.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "freezegun>=1.0.0",
     "docker>=7.1.0",  # Dockerベースのテスト用
 ]
 ```
@@ -484,6 +484,7 @@ class TestMCPServerIntegration:
 
 ### 1. テストの実行
 
+#### Linux/macOS
 ```bash
 # すべてのテストを実行
 uv run pytest
@@ -501,8 +502,29 @@ uv run pytest --cov=src --cov-report=html
 uv run pytest -n auto
 ```
 
+#### Windows
+```powershell
+# すべてのテストを実行
+uv run pytest
+
+# 単体テストのみ実行
+uv run pytest test/unit/
+
+# 統合テストのみ実行
+uv run pytest test/integration/
+
+# カバレッジレポート付きで実行
+uv run pytest --cov=src --cov-report=html
+
+# 並列実行
+uv run pytest -n auto
+```
+
+**注意**: WindowsではPowerShellを使用することを推奨します。一部のテストでは管理者権限が必要な場合があります。
+
 ### 2. コード品質チェック
 
+#### Linux/macOS
 ```bash
 # コードフォーマット
 uv run black src/ test/
@@ -513,6 +535,20 @@ uv run flake8 src/ test/
 # 型チェック
 uv run mypy src/
 ```
+
+#### Windows
+```powershell
+# コードフォーマット
+uv run black src/ test/
+
+# リンター実行
+uv run flake8 src/ test/
+
+# 型チェック
+uv run mypy src/
+```
+
+**注意**: Windowsではファイルパスの区切り文字に注意してください。PowerShellでは`/`と`\`の両方が使用できます。
 
 ## Dockerテスト環境
 
