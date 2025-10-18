@@ -16,7 +16,7 @@
   "mcpServers": {
     "postgres": {
       "command": "uv",
-      "args": ["run", "mcp-postgres"],
+      "args": ["run", "mcp-postgres-duwenji"],
       "env": {
         "POSTGRES_HOST": "localhost",
         "POSTGRES_PORT": "5432",
@@ -38,10 +38,9 @@
   "mcpServers": {
     "postgres": {
       "command": "uv",
-      "args": ["run", "mcp-postgres"],
+      "args": ["run", "mcp-postgres-duwenji"],
       "envFile": "~/.mcp-postgres.env"
     }
   }
 }
 ```
-

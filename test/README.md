@@ -1,6 +1,6 @@
 # PostgreSQL MCP Server テスト環境
 
-このディレクトリには、PostgreSQL MCP Serverのテスト環境とテストケースが含まれています。
+このディレクトリには、PostgreSQL MCP Server (mcp-postgres-duwenji) のテスト環境とテストケースが含まれています。
 
 ## テスト構造
 

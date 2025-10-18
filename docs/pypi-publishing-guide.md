@@ -16,14 +16,16 @@
 ```bash
 mcp-postgres/
 ├── src/
-│   ├── main.py
-│   ├── config.py
-│   ├── database.py
-│   ├── resources.py
-│   └── tools/
+│   └── mcp_postgres/
 │       ├── __init__.py
-│       ├── crud_tools.py
-│       └── schema_tools.py
+│       ├── main.py
+│       ├── config.py
+│       ├── database.py
+│       ├── resources.py
+│       └── tools/
+│           ├── __init__.py
+│           ├── crud_tools.py
+│           └── schema_tools.py
 ├── pyproject.toml
 ├── README.md
 ├── README_ja.md
@@ -39,43 +41,78 @@ mcp-postgres/
 
 ```toml
 [project]
-name = "mcp-postgres"
+name = "mcp-postgres-duwenji"
 version = "1.0.0"
 description = "MCP server for PostgreSQL database operations"
 authors = [
-    { name = "Du Wenji", email = "duwenji@gmail.com" },
+    { name = "mcp-postgres" },
+    { name = "duwenji", email = "duwenji@gmail.com" },
 ]
-readme = "README_ja.md"
+readme = "README.md"
 requires-python = ">=3.10"
-keywords = ["mcp", "postgresql", "database", "ai", "claude"]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "License :: OSI Approved :: Apache Software License",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-]
 dependencies = [
+    "build>=1.3.0",
     "mcp>=1.0.0",
     "psycopg2-binary>=2.9.0",
     "pydantic>=2.0.0",
     "python-dotenv>=1.0.0",
+    "twine>=6.2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-asyncio>=0.21.0",
+    "pytest-cov>=4.0.0",
+    "pytest-mock>=3.0.0",
+    "pytest-xdist>=3.0.0",
+    "black>=23.0.0",
+    "flake8>=6.0.0",
+    "mypy>=1.0.0",
+    "freezegun>=1.0.0",
 ]
 
 [project.scripts]
-mcp-postgres = "src.main:main"
-
-[project.urls]
-Homepage = "https://github.com/duwenji/mcp-postgres"
-Documentation = "https://github.com/duwenji/mcp-postgres#readme"
-Repository = "https://github.com/duwenji/mcp-postgres"
-Issues = "https://github.com/duwenji/mcp-postgres/issues"
+mcp-postgres = "mcp_postgres.main:main"
 
 [build-system]
-requires = ["hatchling"]
-build-backend = "hatchling.build"
+requires = ["uv_build >= 0.9.2, <0.10.0"]
+build-backend = "uv_build"
+
+[tool.black]
+target-version = ['py310']
+line-length = 88
+include = '\.pyi?$'
+extend-exclude = '''
+/(
+  # directories
+  \.eggs
+  | \.git
+  | \.hg
+  | \.mypy_cache
+  | \.tox
+  | \.venv
+  | build
+  | dist
+)/
+'''
+
+[tool.mypy]
+python_version = "3.10"
+warn_return_any = true
+warn_unused_configs = true
+disallow_untyped_defs = true
+
+[tool.pytest.ini_options]
+testpaths = ["test"]
+
+[tool.uv]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.2",
+    "pytest-cov>=7.0.0",
+]
 ```
 
 ## ステップ2: 依存関係の確認
@@ -85,7 +122,7 @@ build-backend = "hatchling.build"
 ```bash
 # 依存関係のテスト
 uv sync
-uv run python -c "import src.main; print('Import successful')"
+uv run python -c "import mcp_postgres.main; print('Import successful')"
 ```
 
 ## ステップ3: テストの実行
@@ -122,8 +159,8 @@ READMEファイルが完全で、適切な説明を含んでいることを確�
 
 このプロジェクトでは以下のビルドツールを使用しています：
 
-1. **hatchling (ビルドバックエンド)**
-   - パッケージのビルドを担当
+1. **uv_build (ビルドバックエンド)**
+   - UVパッケージマネージャーのビルドシステム
    - `pyproject.toml` の `[build-system]` セクションで指定
    - ソースコードから配布パッケージ（.tar.gz と .whl）を生成
    - 依存関係の解決とパッケージング
@@ -135,7 +172,7 @@ READMEファイルが完全で、適切な説明を含んでいることを確�
 
 **ワークフロー:**
 ```
-ソースコード → hatchlingでビルド → 配布パッケージ → twineでアップロード → PyPI
+ソースコード → uv_buildでビルド → 配布パッケージ → twineでアップロード → PyPI
 ```
 
 ### 1. ビルドツールのインストール
@@ -157,8 +194,8 @@ uv run python -m build
 ```
 
 これにより `dist/` ディレクトリに以下のファイルが生成されます：
-- `mcp-postgres-0.1.0.tar.gz`
-- `mcp_postgres-0.1.0-py3-none-any.whl`
+- `mcp-postgres-duwenji-1.0.0.tar.gz`
+- `mcp_postgres_duwenji-1.0.0-py3-none-any.whl`
 
 ### 3. テストPyPIへのアップロード
 
@@ -166,7 +203,7 @@ uv run python -m build
 
 ```bash
 # テストPyPIへのアップロード
-python -m twine upload --repository testpypi dist/*
+uv run python -m twine upload --repository testpypi --verbose dist/*
 ```
 
 認証情報の入力が求められます：
@@ -179,7 +216,7 @@ python -m twine upload --repository testpypi dist/*
 
 ```bash
 # テスト環境でのインストール
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ mcp-postgres
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ mcp-postgres-duwenji
 
 # 動作確認
 mcp-postgres --help
@@ -191,7 +228,7 @@ mcp-postgres --help
 
 ```bash
 # 本番PyPIへのアップロード
-python -m twine upload dist/*
+python -m twine upload --verbose dist/*
 ```
 
 ## ステップ7: APIトークンの設定
@@ -357,13 +394,17 @@ if __name__ == "__main__":
 
 ```bash
 # パッケージ情報の確認
-python -m pip show mcp-postgres
+python -m pip show mcp-postgres-duwenji
 
 # インストール後のテスト
-python -c "import mcp_postgres; print('Import successful')"
+python -c "import mcp_postgres_duwenji; print('Import successful')"
 
 # 依存関係の確認
-pip list | grep mcp-postgres
+pip list | grep mcp-postgres-duwenji
+
+# UVを使用した依存関係の確認
+uv tree
+uv pip list
 ```
 
 ## セキュリティ考慮事項

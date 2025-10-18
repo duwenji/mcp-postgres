@@ -139,7 +139,7 @@ mcp-postgres/
 To run the server directly for testing:
 
 ```bash
-uv run mcp-postgres
+uv run mcp-postgres-duwenji
 ```
 
 ### Adding New Tools

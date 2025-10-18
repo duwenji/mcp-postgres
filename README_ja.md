@@ -26,7 +26,7 @@ PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サ
 
 1. **パッケージのインストール**:
    ```bash
-   pip install mcp-postgres
+   pip install mcp-postgres-duwenji
    ```
 
 2. **Cline設定の追加**:
@@ -35,7 +35,7 @@ PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サ
      "mcpServers": {
        "postgres": {
          "command": "uv",
-         "args": ["run", "mcp-postgres"],
+         "args": ["run", "mcp-postgres-duwenji"],
          "env": {
            "POSTGRES_HOST": "localhost",
            "POSTGRES_PORT": "5432",
@@ -164,7 +164,7 @@ mcp-postgres/
 テスト用にサーバーを直接実行:
 
 ```bash
-uv run mcp-postgres
+uv run mcp-postgres-duwenji
 ```
 
 ### 新しいツールの追加

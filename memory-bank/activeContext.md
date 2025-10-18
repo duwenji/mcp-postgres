@@ -3,26 +3,25 @@
 ## 現在の作業状況
 
 ### 現在の焦点
-- **uvビルドシステムへの移行完了**: hatchlingからuv_buildへの移行と検証
-- **パッケージ構造の最適化**: 標準的なPythonパッケージ構造への変更
-- **ドキュメントの更新**: 移行の仕組みと使用方法の詳細なドキュメント化
+- **PyPI公開完了**: パッケージ名を`mcp-postgres-duwenji`に変更してPyPIに公開
+- **ドキュメントの更新**: パッケージ名変更を反映したドキュメント更新
+- **テスト環境の更新**: 新しいパッケージ名に対応したテスト環境の調整
 
 ### 最近の変更
-1. **ビルドシステムのuv_buildへの移行** (完了)
-   - **pyproject.toml更新**: `[build-system]`セクションをuv_buildに変更
-   - **不要な設定の削除**: `[tool.hatch.build.targets.wheel]`セクションの削除
-   - **パッケージ構造の変更**: ソースコードを`src/mcp_postgres/`に移動
-   - **スクリプトエントリーポイントの更新**: `mcp_postgres.main:main`に変更
+1. **PyPI公開の成功** (完了)
+   - **パッケージ名変更**: `mcp-postgres`から`mcp-postgres-duwenji`に変更
+   - **ソースディレクトリ名変更**: `src/mcp_postgres`から`src/mcp_postgres_duwenji`に変更
+   - **PyPIへのアップロード**: 正常に公開完了（https://pypi.org/project/mcp-postgres-duwenji/1.0.0/）
 
-2. **ビルドと実行の検証** (完了)
-   - **ビルドテスト**: `uv build`による正常なパッケージ生成の確認
-   - **インストールテスト**: 生成されたwheelファイルのインストール成功
-   - **実行テスト**: `uv run mcp-postgres`によるサーバー起動の確認
+2. **403 Forbiddenエラーの解決** (完了)
+   - **原因特定**: 既存の`mcp-postgres`パッケージ名の所有権問題
+   - **解決策**: 一意なパッケージ名への変更とソースディレクトリのリネーム
+   - **学び**: PyPIでのパッケージ名の所有権確認の重要性
 
-3. **ドキュメントの作成と更新** (完了)
-   - **新規ドキュメント**: `test/docs/uv_build_migration_guide.md`の作成
-   - **README更新**: 実行コマンドを`uv run mcp-postgres`に統一
-   - **日本語README更新**: README_ja.mdのサーバー実行コマンドを最新化
+3. **ドキュメントの更新** (完了)
+   - **PyPI公開ガイド**: 実際の公開経験を反映、パッケージ名を更新
+   - **テストREADME**: パッケージ名を`mcp-postgres-duwenji`に更新
+   - **設定ガイド**: 新しいパッケージ名に対応
 
 4. **技術スタックの最適化** (完了)
    - プログラミング言語: Python 3.10+
@@ -30,7 +29,8 @@
    - MCPフレームワーク: 標準MCPプロトコル
    - 設定管理: Pydantic + 環境変数
    - パッケージ管理: uv
-   - **ビルドシステム**: uv_build（hatchlingから移行）
+   - **ビルドシステム**: uv_build
+   - **公開パッケージ**: `mcp-postgres-duwenji` (PyPI)
 
 ## アクティブな決定と考慮事項
 
