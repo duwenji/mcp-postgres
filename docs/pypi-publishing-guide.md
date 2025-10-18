@@ -179,8 +179,6 @@ READMEファイルが完全で、適切な説明を含んでいることを確�
 
 ```bash
 # ビルドツールのインストール
-pip install build twine
-# または uv を使用
 uv add build twine
 ```
 
@@ -188,9 +186,7 @@ uv add build twine
 
 ```bash
 # ディストリビューションのビルド
-python -m build
-# または uv を使用
-uv run python -m build
+uv build
 ```
 
 これにより `dist/` ディレクトリに以下のファイルが生成されます：
@@ -216,7 +212,7 @@ uv run python -m twine upload --repository testpypi --verbose dist/*
 
 ```bash
 # テスト環境でのインストール
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ mcp-postgres-duwenji
+uv pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ mcp-postgres-duwenji
 
 # 動作確認
 mcp-postgres --help
@@ -228,7 +224,7 @@ mcp-postgres --help
 
 ```bash
 # 本番PyPIへのアップロード
-python -m twine upload --verbose dist/*
+uv run python -m twine upload --verbose dist/*
 ```
 
 ## ステップ7: APIトークンの設定
@@ -265,10 +261,10 @@ $env:TWINE_PASSWORD="pypi-YourAPITokenHere"
 set -e
 
 echo "Building distribution..."
-python -m build
+uv build
 
 echo "Uploading to PyPI..."
-python -m twine upload dist/*
+uv run python -m twine upload dist/*
 
 echo "Publication complete!"
 ```
@@ -280,10 +276,10 @@ param(
 )
 
 Write-Host "Building distribution..."
-python -m build
+uv build
 
 Write-Host "Uploading to PyPI..."
-python -m twine upload dist/*
+uv run python -m twine upload dist/*
 
 Write-Host "Publication complete!"
 ```
