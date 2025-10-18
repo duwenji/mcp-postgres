@@ -3,22 +3,23 @@
 ## 技術スタック
 
 ### コア技術
-- **プログラミング言語**: Python 3.8+
+- **プログラミング言語**: Python 3.10+
 - **MCPフレームワーク**: 標準MCPプロトコル実装
-- **データベース接続**: psycopg2 (PostgreSQLアダプター)
-- **非同期処理**: asyncio (必要に応じて)
+- **データベース接続**: psycopg2-binary (PostgreSQLアダプター)
+- **非同期処理**: asyncio
 - **設定管理**: Pydantic + 環境変数
+- **パッケージ管理**: uv
 
 ### 主要ライブラリ
-- `mcp`: MCPプロトコル実装
-- `psycopg2`: PostgreSQLデータベース接続
-- `pydantic`: 設定バリデーション
-- `python-dotenv`: 環境変数管理
+- `mcp>=1.0.0`: MCPプロトコル実装
+- `psycopg2-binary>=2.9.0`: PostgreSQLデータベース接続
+- `pydantic>=2.0.0`: 設定バリデーション
+- `python-dotenv>=1.0.0`: 環境変数管理
 
 ## 開発環境設定
 
 ### 前提条件
-- Python 3.8以上
+- Python 3.10以上
 - PostgreSQL 12以上
 - [uv](https://github.com/astral-sh/uv) (Pythonパッケージマネージャー)
 
@@ -28,6 +29,9 @@
 - **仮想環境**: uvによる自動管理
 - **バージョン管理**: Git
 - **テストフレームワーク**: pytest
+- **コードフォーマッター**: black
+- **リンター**: flake8
+- **型チェッカー**: mypy
 
 ## 技術的制約
 
@@ -43,7 +47,7 @@
 
 ### 互換性
 - PostgreSQL 12以上との互換性
-- Python 3.8+との互換性
+- Python 3.10+との互換性
 - 主要OS（Windows, macOS, Linux）での動作
 
 ## 依存関係
@@ -51,7 +55,7 @@
 ### 依存関係管理
 - **パッケージマネージャー**: uv
 - **設定ファイル**: `pyproject.toml`
-- **ビルドシステム**: hatchling
+- **ビルドシステム**: uv_build（hatchlingから移行）
 
 ### コア依存関係
 ```python
@@ -129,7 +133,7 @@ class PostgresConfig(BaseSettings):
 1. 仮想環境のセットアップ
 2. 依存関係のインストール
 3. 環境変数の設定
-4. 開発サーバーの起動
+4. 開発サーバーの起動（`uv run mcp-postgres`）
 5. テストの実行
 
 ### テスト戦略

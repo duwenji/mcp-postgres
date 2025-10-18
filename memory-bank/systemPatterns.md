@@ -11,20 +11,25 @@
 ```
 
 ### コンポーネント構成
-1. **MCPサーバーコア**
-   - MCPプロトコルハンドラー
-   - ツール登録と実行管理
-   - リソース管理
+1. **MCPサーバーコア** (実装済み)
+   - MCPプロトコルハンドラー (main.py)
+   - ツール登録と実行管理 (main.py)
+   - リソース管理 (resources.py)
 
-2. **データベース接続層**
-   - 接続プール管理
-   - クエリ実行エンジン
-   - トランザクション管理
+2. **データベース接続層** (実装中)
+   - 接続プール管理 (database.py)
+   - クエリ実行エンジン (database.py)
+   - トランザクション管理 (database.py)
 
-3. **設定管理層**
-   - 環境変数読み込み
-   - 設定バリデーション
-   - セキュリティ設定
+3. **設定管理層** (実装済み)
+   - 環境変数読み込み (config.py)
+   - 設定バリデーション (config.py)
+   - セキュリティ設定 (config.py)
+
+4. **ツールシステム** (実装済み)
+   - CRUDツール (tools/crud_tools.py)
+   - スキーマツール (tools/schema_tools.py)
+   - ツールハンドラー (tools/ディレクトリ)
 
 ## 主要技術的決定
 
@@ -112,22 +117,26 @@ class QueryExecutor:
 
 ### 依存関係図
 ```
-MCP Server Core
+MCP Server Core (main.py)
     │
-    ├── Tool Registry
-    │   ├── Query Tools
-    │   ├── Schema Tools
-    │   └── Data Tools
+    ├── Tool Registry (main.py)
+    │   ├── Query Tools (tools/crud_tools.py)
+    │   ├── Schema Tools (tools/schema_tools.py)
+    │   └── Data Tools (tools/crud_tools.py)
     │
-    ├── Connection Manager
-    │   ├── Pool Factory
-    │   ├── Connection Pool
-    │   └── Retry Handler
+    ├── Connection Manager (database.py)
+    │   ├── Pool Factory (database.py)
+    │   ├── Connection Pool (database.py)
+    │   └── Retry Handler (database.py)
     │
-    └── Configuration Manager
-        ├── Env Loader
-        ├── Validator
-        └── Security Config
+    ├── Configuration Manager (config.py)
+    │   ├── Env Loader (config.py)
+    │   ├── Validator (config.py)
+    │   └── Security Config (config.py)
+    │
+    └── Resource Manager (resources.py)
+        ├── Static Resources (resources.py)
+        └── Dynamic Resources (resources.py)
 ```
 
 ### データフロー

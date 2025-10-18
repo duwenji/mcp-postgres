@@ -139,7 +139,7 @@ mcp-postgres/
 To run the server directly for testing:
 
 ```bash
-uv run python -m src.main
+uv run mcp-postgres
 ```
 
 ### Adding New Tools

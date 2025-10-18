@@ -1,0 +1,18 @@
+{
+  "mcpServers": {
+    "postgres": {
+      "command": "uv",
+      "args": ["run", "mcp-postgres"],
+      "env": {
+        "POSTGRES_HOST": "localhost",
+        "POSTGRES_PORT": "5432",
+        "POSTGRES_DB": "your_database_name",
+        "POSTGRES_USER": "your_username",
+        "POSTGRES_PASSWORD": "your_password",
+        "POSTGRES_SSL_MODE": "prefer",
+        "POSTGRES_POOL_SIZE": "5",
+        "POSTGRES_MAX_OVERFLOW": "10"
+      }
+    }
+  }
+}

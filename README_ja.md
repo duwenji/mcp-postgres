@@ -20,13 +20,38 @@ PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サ
 
 ## クイックスタート
 
-### 前提条件
+### 方法1: UV指定での直接実行（推奨）
 
-- Python 3.8以上
-- PostgreSQLデータベース（バージョン12以上）
-- [uv](https://github.com/astral-sh/uv) パッケージマネージャー（最新版）
+**前提条件**: Python 3.10以上、Clineまたは他のMCPクライアント
 
-### インストール
+1. **パッケージのインストール**:
+   ```bash
+   pip install mcp-postgres
+   ```
+
+2. **Cline設定の追加**:
+   ```json
+   {
+     "mcpServers": {
+       "postgres": {
+         "command": "uv",
+         "args": ["run", "mcp-postgres"],
+         "env": {
+           "POSTGRES_HOST": "localhost",
+           "POSTGRES_PORT": "5432",
+           "POSTGRES_DB": "your_database",
+           "POSTGRES_USER": "your_username",
+           "POSTGRES_PASSWORD": "your_password",
+           "POSTGRES_SSL_MODE": "prefer"
+         }
+       }
+     }
+   }
+   ```
+
+### 方法2: ソースからのインストール
+
+**前提条件**: Python 3.8以上、PostgreSQLデータベース（バージョン12以上）、[uv](https://github.com/astral-sh/uv) パッケージマネージャー
 
 1. **リポジトリをクローン**:
    ```bash
@@ -45,8 +70,8 @@ PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サ
    # .envを編集してPostgreSQL接続情報を入力
    ```
 
-4. **MCPクライアントを設定**（例：Claude Desktop）:
-   MCPクライアントの設定にサーバー設定を追加します。
+4. **MCPクライアントを設定**（例：Cline、Claude Desktop）:
+   MCPクライアントの設定にサーバー設定を追加します。詳細な設定例は[設定サンプル](docs/mcp-config-examples.md)、[Cline設定ガイド](docs/cline-setup-guide.md)、[シンプル設定ガイド](docs/simple-setup-guide.md)を参照してください。
 
 ### 設定
 
@@ -139,7 +164,7 @@ mcp-postgres/
 テスト用にサーバーを直接実行:
 
 ```bash
-uv run python -m src.main
+uv run mcp-postgres
 ```
 
 ### 新しいツールの追加

@@ -5,7 +5,7 @@ Main entry point for PostgreSQL MCP Server
 import asyncio
 import logging
 import sys
-from mcp import MCPServer
+from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
 from .config import load_config
@@ -35,7 +35,7 @@ async def main():
         sys.exit(1)
     
     # Create MCP server
-    server = MCPServer("postgres-mcp-server")
+    server = Server("postgres-mcp-server")
     
     # Register tools
     crud_tools = get_crud_tools()
