@@ -18,24 +18,38 @@ PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サ
 - `update_entity`: 条件に基づいて既存の行を更新
 - `delete_entity`: テーブルから行を削除
 
+### スキーマ操作
+- `get_tables`: データベース内の全テーブル一覧を取得
+- `get_table_schema`: 特定のテーブルの詳細なスキーマ情報を取得
+- `get_database_info`: データベースのメタデータとバージョン情報を取得
+
+## 利用可能なリソース
+
+### データベースリソース
+- `database://tables`: データベース内の全テーブル一覧
+- `database://info`: データベースのメタデータとバージョン情報
+- `database://schema/{table_name}`: 特定のテーブルのスキーマ情報
+
 ## クイックスタート
 
-### 方法1: UV指定での直接実行（推奨）
+### 前提条件
 
-**前提条件**: Python 3.10以上、Clineまたは他のMCPクライアント
+- Python 3.10以上
+- PostgreSQLデータベース（バージョン12以上）
+- [uv](https://github.com/astral-sh/uv) パッケージマネージャー（最新版）
 
-1. **パッケージのインストール**:
-   ```bash
-   pip install mcp-postgres-duwenji
-   ```
+### インストール
 
-2. **Cline設定の追加**:
+1. **MCPクライアントを設定**（例：Claude Desktop）:
+   MCPクライアントの設定にサーバー設定を追加し、`uvx`を使用します：
+
+   **Claude Desktop設定例**:
    ```json
    {
      "mcpServers": {
-       "postgres": {
-         "command": "uv",
-         "args": ["run", "mcp-postgres-duwenji"],
+       "postgres-mcp": {
+         "command": "uvx",
+         "args": ["mcp-postgres-duwenji"],
          "env": {
            "POSTGRES_HOST": "localhost",
            "POSTGRES_PORT": "5432",
@@ -49,47 +63,6 @@ PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サ
    }
    ```
 
-### 方法2: ソースからのインストール
-
-**前提条件**: Python 3.8以上、PostgreSQLデータベース（バージョン12以上）、[uv](https://github.com/astral-sh/uv) パッケージマネージャー
-
-1. **リポジトリをクローン**:
-   ```bash
-   git clone https://github.com/duwenji/mcp-postgres.git
-   cd mcp-postgres
-   ```
-
-2. **uvで依存関係をインストール**:
-   ```bash
-   uv sync
-   ```
-
-3. **データベース接続を設定**:
-   ```bash
-   cp .env.example .env
-   # .envを編集してPostgreSQL接続情報を入力
-   ```
-
-4. **MCPクライアントを設定**（例：Cline、Claude Desktop）:
-   MCPクライアントの設定にサーバー設定を追加します。詳細な設定例は[設定サンプル](docs/mcp-config-examples.md)、[Cline設定ガイド](docs/cline-setup-guide.md)、[シンプル設定ガイド](docs/simple-setup-guide.md)を参照してください。
-
-### 設定
-
-PostgreSQL接続情報を含む`.env`ファイルを作成:
-
-```bash
-# PostgreSQL接続設定
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=your_database
-POSTGRES_USER=your_username
-POSTGRES_PASSWORD=your_password
-
-# オプション設定
-POSTGRES_SSL_MODE=prefer
-POSTGRES_POOL_SIZE=5
-POSTGRES_MAX_OVERFLOW=10
-```
 
 ### 使用例
 
@@ -179,12 +152,12 @@ mcp-postgres/
 テスト用にサーバーを直接実行:
 
 ```bash
-uv run mcp-postgres-duwenji
+uvx mcp-postgres-duwenji
 ```
 
 ### 新しいツールの追加
 
-1. `src/tools/`に新しいツール定義を作成
+1. `src/mcp_postgres_duwenji/tools/`に新しいツール定義を作成
 2. ツールハンドラー関数を追加
 3. `get_crud_tools()`と`get_crud_handlers()`にツールを登録
 4. ツールはMCPインターフェースを通じて自動的に利用可能になります

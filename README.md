@@ -18,53 +18,52 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. This s
 - `update_entity`: Update existing rows based on conditions
 - `delete_entity`: Remove rows from tables
 
+### Schema Operations
+- `get_tables`: Get list of all tables in the database
+- `get_table_schema`: Get detailed schema information for a specific table
+- `get_database_info`: Get database metadata and version information
+
+## Available Resources
+
+### Database Resources
+- `database://tables`: List of all tables in the database
+- `database://info`: Database metadata and version information
+- `database://schema/{table_name}`: Schema information for specific tables
+
 ## Quick Start
 
 ### Prerequisites
 
-- Python 3.8 or higher
+- Python 3.10 or higher
 - PostgreSQL database (version 12 or higher)
 - [uv](https://github.com/astral-sh/uv) package manager (latest version)
 
 ### Installation
 
-1. **Clone the repository**:
-   ```bash
-   git clone https://github.com/duwenji/mcp-postgres.git
-   cd mcp-postgres
+1. **Configure your MCP client** (e.g., Claude Desktop):
+   Add the server configuration to your MCP client settings using `uvx`:
+
+   **Claude Desktop Configuration Example**:
+   ```json
+   {
+     "mcpServers": {
+       "postgres-mcp": {
+         "command": "uvx",
+         "args": ["mcp-postgres-duwenji"],
+         "env": {
+           "POSTGRES_HOST": "localhost",
+           "POSTGRES_PORT": "5432",
+           "POSTGRES_DB": "your_database",
+           "POSTGRES_USER": "your_username",
+           "POSTGRES_PASSWORD": "your_password",
+           "POSTGRES_SSL_MODE": "prefer"
+         }
+       }
+     }
+   }
    ```
 
-2. **Install dependencies with uv**:
-   ```bash
-   uv sync
-   ```
 
-3. **Configure your database connection**:
-   ```bash
-   cp .env.example .env
-   # Edit .env with your PostgreSQL connection details
-   ```
-
-4. **Configure your MCP client** (e.g., Claude Desktop):
-   Add the server configuration to your MCP client settings.
-
-### Configuration
-
-Create a `.env` file with your PostgreSQL connection details:
-
-```bash
-# PostgreSQL Connection Settings
-POSTGRES_HOST=localhost
-POSTGRES_PORT=5432
-POSTGRES_DB=your_database
-POSTGRES_USER=your_username
-POSTGRES_PASSWORD=your_password
-
-# Optional Settings
-POSTGRES_SSL_MODE=prefer
-POSTGRES_POOL_SIZE=5
-POSTGRES_MAX_OVERFLOW=10
-```
 
 ### Usage Examples
 
@@ -154,12 +153,12 @@ mcp-postgres/
 To run the server directly for testing:
 
 ```bash
-uv run mcp_postgres_duwenji
+uvx mcp-postgres-duwenji
 ```
 
 ### Adding New Tools
 
-1. Create a new tool definition in `src/tools/`
+1. Create a new tool definition in `src/mcp_postgres_duwenji/tools/`
 2. Add the tool handler function
 3. Register the tool in `get_crud_tools()` and `get_crud_handlers()`
 4. The tool will be automatically available through the MCP interface
