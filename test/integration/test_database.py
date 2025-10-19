@@ -3,8 +3,8 @@ Integration tests for database operations
 """
 import pytest
 import asyncio
-from src.config import PostgresConfig, load_config
-from src.database import DatabaseManager, DatabaseConnection, DatabaseError
+from src.mcp_postgres_duwenji.config import PostgresConfig, load_config
+from src.mcp_postgres_duwenji.database import DatabaseManager, DatabaseConnection, DatabaseError
 
 
 @pytest.mark.integration
@@ -41,7 +41,7 @@ class TestDatabaseCRUD:
     """Test CRUD operations"""
     
     @pytest.fixture
-    def db_manager(self, test_database_config):
+    def db_manager(self, test_database_config, clean_test_database):
         """Create database manager for tests"""
         config = PostgresConfig(**test_database_config)
         manager = DatabaseManager(config)
@@ -136,7 +136,7 @@ class TestDatabaseQueries:
     """Test various database queries"""
     
     @pytest.fixture
-    def db_manager(self, test_database_config):
+    def db_manager(self, test_database_config, clean_test_database):
         """Create database manager for tests"""
         config = PostgresConfig(**test_database_config)
         manager = DatabaseManager(config)
@@ -184,7 +184,8 @@ class TestDatabaseQueries:
         assert isinstance(result, list)
         assert len(result) == 1
         assert result[0]["name"] == "Test Product"
-        assert result[0]["price"] == 49.99
+        # PostgreSQL returns DECIMAL type, so we need to convert for comparison
+        assert float(result[0]["price"]) == 49.99
 
 
 @pytest.mark.integration
@@ -192,7 +193,7 @@ class TestDatabaseErrorHandling:
     """Test database error handling"""
     
     @pytest.fixture
-    def db_manager(self, test_database_config):
+    def db_manager(self, test_database_config, clean_test_database):
         """Create database manager for tests"""
         config = PostgresConfig(**test_database_config)
         manager = DatabaseManager(config)
@@ -237,7 +238,7 @@ class TestDatabaseTransactions:
     """Test database transaction behavior"""
     
     @pytest.fixture
-    def db_manager(self, test_database_config):
+    def db_manager(self, test_database_config, clean_test_database):
         """Create database manager for tests"""
         config = PostgresConfig(**test_database_config)
         manager = DatabaseManager(config)

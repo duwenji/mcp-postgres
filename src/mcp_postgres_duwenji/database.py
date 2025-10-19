@@ -68,8 +68,23 @@ class DatabaseConnection:
                 if query.strip().upper().startswith('SELECT'):
                     results = cursor.fetchall()
                     return [dict(row) for row in results]
+                elif query.strip().upper().startswith('INSERT') and 'RETURNING' in query.upper():
+                    # For INSERT with RETURNING clause, fetch the inserted row
+                    results = cursor.fetchall()
+                    self._connection.commit()
+                    return [dict(row) for row in results]
+                elif query.strip().upper().startswith('UPDATE') and 'RETURNING' in query.upper():
+                    # For UPDATE with RETURNING clause, fetch the updated row
+                    results = cursor.fetchall()
+                    self._connection.commit()
+                    return [dict(row) for row in results]
+                elif query.strip().upper().startswith('DELETE') and 'RETURNING' in query.upper():
+                    # For DELETE with RETURNING clause, fetch the deleted rows
+                    results = cursor.fetchall()
+                    self._connection.commit()
+                    return [dict(row) for row in results]
                 else:
-                    # For INSERT/UPDATE/DELETE, commit and return affected row count
+                    # For other queries, commit and return affected row count
                     self._connection.commit()
                     return [{"affected_rows": cursor.rowcount}]
                     

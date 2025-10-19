@@ -4,65 +4,10 @@ REM PostgreSQL MCP Server Test Runner Script for Windows
 echo === PostgreSQL MCP Server Test Runner ===
 
 REM Check for help options first
-if "%1"=="--help" goto :help
-if "%1"=="-h" goto :help
+if "%1"=="--help" goto help
+if "%1"=="-h" goto help
 
-REM Function to run unit tests
-:run_unit_tests
-echo [INFO] Running unit tests...
-uv run python -m pytest test/unit/ -v --tb=short --cov=src --cov-report=term-missing
-goto :eof
-
-REM Function to run integration tests
-:run_integration_tests
-echo [INFO] Running integration tests...
-set RUN_INTEGRATION_TESTS=1
-uv run python -m pytest test/integration/ -v --tb=short -m integration
-set RUN_INTEGRATION_TESTS=
-goto :eof
-
-REM Function to check Docker availability
-:check_docker
-docker --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Docker is not installed or not in PATH
-    exit /b 1
-)
-
-docker-compose --version >nul 2>&1
-if %errorlevel% neq 0 (
-    echo [ERROR] Docker Compose is not installed or not in PATH
-    exit /b 1
-)
-
-echo [SUCCESS] Docker and Docker Compose are available
-goto :eof
-
-REM Function to run all tests with Docker
-:run_docker_tests
-echo [INFO] Starting Docker test environment...
-cd test\docker
-
-REM Build and start services
-docker-compose -f docker-compose.test.yml up --build -d
-
-REM Wait for PostgreSQL to be ready
-echo [INFO] Waiting for PostgreSQL to be ready...
-timeout /t 10 /nobreak >nul
-
-REM Run tests
-echo [INFO] Running tests in Docker container...
-docker-compose -f docker-compose.test.yml run --rm test-runner
-
-REM Stop services
-echo [INFO] Stopping Docker services...
-docker-compose -f docker-compose.test.yml down
-
-cd ..\..
-goto :eof
-
-REM Main execution
-:main
+REM Main execution logic
 setlocal enabledelayedexpansion
 
 set "test_type=%~1"
@@ -89,9 +34,57 @@ if "%test_type%"=="docker" (
 )
 
 echo [SUCCESS] Test execution completed!
-goto :eof
+exit /b 0
 
-REM Help section
+:run_unit_tests
+echo [INFO] Running unit tests...
+uv run python -m pytest test/unit/ -v --tb=short --cov=src --cov-report=term-missing
+exit /b 0
+
+:run_integration_tests
+echo [INFO] Running integration tests...
+set RUN_INTEGRATION_TESTS=1
+uv run python -m pytest test/integration/ -v --tb=short -m integration
+exit /b 0
+
+:check_docker
+docker --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Docker is not installed or not in PATH
+    exit /b 1
+)
+
+docker-compose --version >nul 2>&1
+if %errorlevel% neq 0 (
+    echo [ERROR] Docker Compose is not installed or not in PATH
+    exit /b 1
+)
+
+echo [SUCCESS] Docker and Docker Compose are available
+exit /b 0
+
+:run_docker_tests
+echo [INFO] Starting Docker test environment...
+cd test\docker
+
+REM Build and start services
+docker-compose -f docker-compose.test.yml up --build -d
+
+REM Wait for PostgreSQL to be ready
+echo [INFO] Waiting for PostgreSQL to be ready...
+timeout /t 10 /nobreak >nul
+
+REM Run tests
+echo [INFO] Running tests in Docker container...
+docker-compose -f docker-compose.test.yml run --rm test-runner
+
+REM Stop services
+echo [INFO] Stopping Docker services...
+docker-compose -f docker-compose.test.yml down
+
+cd ..\..
+exit /b 0
+
 :help
 echo Usage: %0 [test_type]
 echo.
@@ -107,6 +100,3 @@ echo   %0 integration # Run only integration tests
 echo   %0 docker      # Run tests in Docker
 echo   %0             # Run all tests
 exit /b 0
-
-REM Start main execution
-call :main %1

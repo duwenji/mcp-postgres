@@ -55,6 +55,40 @@ def setup_test_environment():
             os.environ[key] = value
 
 
+@pytest.fixture(scope="session")
+def clean_test_database(test_database_config):
+    """Clean test database before running tests."""
+    from src.mcp_postgres_duwenji.database import DatabaseManager
+    from src.mcp_postgres_duwenji.config import PostgresConfig
+    
+    config = PostgresConfig(**test_database_config)
+    manager = DatabaseManager(config)
+    
+    try:
+        # Connect to database
+        manager.connection.connect()
+        
+        # Clean test data
+        print("Cleaning test database...")
+        
+        # Delete test data in reverse order to respect foreign key constraints
+        manager.connection.execute_query("DELETE FROM orders")
+        manager.connection.execute_query("DELETE FROM products")
+        manager.connection.execute_query("DELETE FROM users")
+        
+        # Reset sequences
+        manager.connection.execute_query("ALTER SEQUENCE users_id_seq RESTART WITH 1")
+        manager.connection.execute_query("ALTER SEQUENCE products_id_seq RESTART WITH 1")
+        manager.connection.execute_query("ALTER SEQUENCE orders_id_seq RESTART WITH 1")
+        
+        print("Test database cleaned successfully")
+        
+    except Exception as e:
+        print(f"Warning: Could not clean test database: {e}")
+    finally:
+        manager.connection.disconnect()
+
+
 def pytest_configure(config):
     """Configure pytest."""
     config.addinivalue_line(
