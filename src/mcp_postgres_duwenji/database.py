@@ -116,9 +116,9 @@ class DatabaseConnection:
                 version_result = cursor.fetchone()
                 # RealDictCursorを使用しているので辞書として扱う
                 if version_result and isinstance(version_result, dict):
-                    version_str = version_result.get('version', 'Unknown')
+                    version_str = version_result.get("version", "Unknown")
                 else:
-                    version_str = str(version_result) if version_result else 'Unknown'
+                    version_str = str(version_result) if version_result else "Unknown"
                 logger.info(f"PostgreSQL version: {version_str}")
             return True
         except (DatabaseError, psycopg2.Error) as e:
