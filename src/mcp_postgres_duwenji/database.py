@@ -108,6 +108,9 @@ class DatabaseConnection:
         """Test database connection"""
         try:
             self.connect()
+            if self._connection is None:
+                logger.error("Database connection is None")
+                return False
             with self._connection.cursor() as cursor:
                 cursor.execute("SELECT version();")
                 version = cursor.fetchone()

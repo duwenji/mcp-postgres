@@ -3,7 +3,7 @@ Schema tools for PostgreSQL MCP Server
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Optional, Callable, Coroutine
 from mcp import Tool
 
 from ..database import DatabaseManager, DatabaseError
@@ -109,7 +109,7 @@ async def handle_get_table_schema(
         ORDER BY ordinal_position
         """
 
-        results = db_manager.connection.execute_query(query, (schema, table_name))
+        results = db_manager.connection.execute_query(query, {"schema": schema, "table_name": table_name})
 
         # Get table constraints
         constraints_query = """
@@ -127,7 +127,7 @@ async def handle_get_table_schema(
         """
 
         constraints = db_manager.connection.execute_query(
-            constraints_query, (schema, table_name)
+            constraints_query, {"schema": schema, "table_name": table_name}
         )
 
         # Disconnect from database
@@ -213,7 +213,7 @@ def get_schema_tools() -> List[Tool]:
     ]
 
 
-def get_schema_handlers() -> Dict[str, callable]:
+def get_schema_handlers() -> Dict[str, Callable[..., Coroutine[Any, Any, Dict[str, Any]]]]:
     """Get tool handlers for schema operations"""
     return {
         "get_tables": handle_get_tables,

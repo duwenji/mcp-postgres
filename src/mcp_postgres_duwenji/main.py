@@ -5,6 +5,7 @@ Main entry point for PostgreSQL MCP Server
 import asyncio
 import logging
 import sys
+from typing import Any, Dict, List, Coroutine
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
@@ -17,7 +18,7 @@ from .resources import (
     get_resource_handlers,
     get_table_schema_resource_handler,
 )
-from mcp import Resource
+from mcp import Resource, Tool
 
 # Configure logging
 logging.basicConfig(
@@ -26,7 +27,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
-async def main():
+async def main() -> None:
     """Main entry point for the MCP server"""
     try:
         # Load configuration
@@ -52,7 +53,7 @@ async def main():
 
     # Register tool handlers
     @server.call_tool()
-    async def handle_tool_call(name: str, arguments: dict) -> dict:
+    async def handle_tool_call(name: str, arguments: dict) -> Dict[str, Any]:
         """Handle tool execution requests"""
         logger.info(f"Tool call: {name} with arguments: {arguments}")
 
@@ -71,7 +72,7 @@ async def main():
 
     # Register tools via list_tools handler
     @server.list_tools()
-    async def handle_list_tools() -> list:
+    async def handle_list_tools() -> List[Tool]:
         """List available tools"""
         logger.info("Listing available tools")
         return all_tools
@@ -82,7 +83,7 @@ async def main():
     table_schema_handler = get_table_schema_resource_handler()
 
     @server.list_resources()
-    async def handle_list_resources() -> list:
+    async def handle_list_resources() -> List[Resource]:
         """List available resources"""
         resources = database_resources.copy()
 
@@ -98,7 +99,7 @@ async def main():
                 for table_name in tables_result["tables"]:
                     resources.append(
                         Resource(
-                            uri=f"database://schema/{table_name}",
+                            uri=f"database://schema/{table_name}",  # type: ignore
                             name=f"Table Schema: {table_name}",
                             description=f"Schema information for table {table_name}",
                             mimeType="text/markdown",
@@ -122,7 +123,7 @@ async def main():
         # Handle dynamic table schema resources
         if uri.startswith("database://schema/"):
             table_name = uri.replace("database://schema/", "")
-            return await table_schema_handler(table_name)
+            return await table_schema_handler(table_name, "public")
 
         return f"Resource {uri} not found"
 
@@ -134,7 +135,7 @@ async def main():
         )
 
 
-def cli_main():
+def cli_main() -> None:
     """CLI entry point for uv run"""
     asyncio.run(main())
 

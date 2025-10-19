@@ -3,7 +3,7 @@ Resource management for PostgreSQL MCP Server
 """
 
 import logging
-from typing import List, Dict, Any
+from typing import List, Dict, Any, Callable, Coroutine
 from mcp import Resource
 
 from .database import DatabaseManager, DatabaseError
@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 class DatabaseResourceManager:
     """Manage database-related resources"""
 
-    def __init__(self):
+    def __init__(self) -> None:
         self.config = load_config()
         self.db_manager = DatabaseManager(self.config.postgres)
 
@@ -65,7 +65,7 @@ class DatabaseResourceManager:
             """
 
             columns = self.db_manager.connection.execute_query(
-                query, (schema, table_name)
+                query, {"schema": schema, "table_name": table_name}
             )
 
             # Get table constraints
@@ -84,7 +84,7 @@ class DatabaseResourceManager:
             """
 
             constraints = self.db_manager.connection.execute_query(
-                constraints_query, (schema, table_name)
+                constraints_query, {"schema": schema, "table_name": table_name}
             )
 
             self.db_manager.connection.disconnect()
@@ -174,14 +174,14 @@ class DatabaseResourceManager:
 
 # Resource definitions
 database_tables_resource = Resource(
-    uri="database://tables",
+    uri="database://tables",  # type: ignore
     name="Database Tables",
     description="List of all tables in the database",
     mimeType="text/markdown",
 )
 
 database_info_resource = Resource(
-    uri="database://info",
+    uri="database://info",  # type: ignore
     name="Database Information",
     description="Database metadata and version information",
     mimeType="text/markdown",
@@ -196,7 +196,7 @@ def get_database_resources() -> List[Resource]:
     ]
 
 
-def get_resource_handlers() -> Dict[str, callable]:
+def get_resource_handlers() -> Dict[str, Callable[[], Coroutine[Any, Any, str]]]:
     """Get resource handlers"""
     resource_manager = DatabaseResourceManager()
 
@@ -206,7 +206,7 @@ def get_resource_handlers() -> Dict[str, callable]:
     }
 
 
-def get_table_schema_resource_handler() -> callable:
+def get_table_schema_resource_handler() -> Callable[[str, str], Coroutine[Any, Any, str]]:
     """Get table schema resource handler factory"""
     resource_manager = DatabaseResourceManager()
     return resource_manager.get_table_schema_resource
