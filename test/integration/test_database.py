@@ -2,10 +2,16 @@
 Integration tests for database operations
 """
 
+import os
+import sys
 import pytest
 import asyncio
-from src.mcp_postgres_duwenji.config import PostgresConfig, load_config
-from src.mcp_postgres_duwenji.database import (
+
+# Add src directory to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+
+from mcp_postgres_duwenji.config import PostgresConfig, load_config
+from mcp_postgres_duwenji.database import (
     DatabaseManager,
     DatabaseConnection,
     DatabaseError,

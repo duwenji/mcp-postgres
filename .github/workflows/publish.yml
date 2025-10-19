@@ -50,6 +50,7 @@ jobs:
         POSTGRES_DB: test_db
         POSTGRES_USER: postgres
         POSTGRES_PASSWORD: postgres
+        PYTHONPATH: ${{ github.workspace }}/src
       run: |
         uv run pytest -v --cov=src --cov-report=xml
     
@@ -82,14 +83,20 @@ jobs:
         uv sync
     
     - name: Run flake8
+      env:
+        PYTHONPATH: ${{ github.workspace }}/src
       run: |
         uv run flake8 src/ --count --show-source --statistics
     
     - name: Run mypy
+      env:
+        PYTHONPATH: ${{ github.workspace }}/src
       run: |
         uv run mypy src/
     
     - name: Run black check
+      env:
+        PYTHONPATH: ${{ github.workspace }}/src
       run: |
         uv run black --check src/ test/
 

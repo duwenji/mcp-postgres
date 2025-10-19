@@ -3,10 +3,14 @@ Unit tests for configuration management
 """
 
 import os
+import sys
 import pytest
 from unittest.mock import patch
 
-from src.mcp_postgres_duwenji.config import (
+# Add src directory to Python path
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+
+from mcp_postgres_duwenji.config import (
     PostgresConfig,
     ServerConfig,
     load_config,

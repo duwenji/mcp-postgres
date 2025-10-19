@@ -65,8 +65,11 @@ def setup_test_environment():
 @pytest.fixture(scope="session")
 def clean_test_database(test_database_config):
     """Clean test database before running tests."""
-    from src.mcp_postgres_duwenji.database import DatabaseManager
-    from src.mcp_postgres_duwenji.config import PostgresConfig
+    import sys
+    import os
+    sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', 'src'))
+    from mcp_postgres_duwenji.database import DatabaseManager
+    from mcp_postgres_duwenji.config import PostgresConfig
 
     config = PostgresConfig(**test_database_config)
     manager = DatabaseManager(config)
