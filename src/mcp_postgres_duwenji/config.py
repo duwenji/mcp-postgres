@@ -3,7 +3,6 @@ Configuration management for PostgreSQL MCP Server
 """
 
 import os
-from typing import Optional
 from pydantic import BaseModel, Field
 
 
@@ -102,7 +101,10 @@ def get_connection_string(config: PostgresConfig) -> str:
     Returns:
         str: PostgreSQL connection string
     """
-    base_conn_str = f"postgresql://{config.username}:{config.password}@{config.host}:{config.port}/{config.database}"
+    base_conn_str = (
+        f"postgresql://{config.username}:{config.password}@"
+        f"{config.host}:{config.port}/{config.database}"
+    )
 
     # Add SSL mode if specified and not default "prefer"
     if config.ssl_mode and config.ssl_mode != "prefer":

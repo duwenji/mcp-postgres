@@ -156,7 +156,10 @@ class DatabaseManager:
 
         columns = ", ".join(data.keys())
         placeholders = ", ".join([f"%({key})s" for key in data.keys()])
-        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) RETURNING *"  # nosec
+        query = (
+            f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) "
+            "RETURNING *"  # nosec
+        )
 
         try:
             results = self.connection.execute_query(query, data)
@@ -232,7 +235,10 @@ class DatabaseManager:
             where_clauses.append(f"{key} = %(condition_{key})s")
             params[f"condition_{key}"] = value
 
-        query = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE {' AND '.join(where_clauses)} RETURNING *"  # nosec
+        query = (
+            f"UPDATE {table_name} SET {', '.join(set_clauses)} "
+            f"WHERE {' AND '.join(where_clauses)} RETURNING *"  # nosec
+        )
 
         try:
             results = self.connection.execute_query(query, params)
@@ -266,7 +272,10 @@ class DatabaseManager:
             where_clauses.append(f"{key} = %({key})s")
             params[key] = value
 
-        query = f"DELETE FROM {table_name} WHERE {' AND '.join(where_clauses)} RETURNING *"  # nosec
+        query = (
+            f"DELETE FROM {table_name} WHERE {' AND '.join(where_clauses)} "
+            "RETURNING *"  # nosec
+        )
 
         try:
             results = self.connection.execute_query(query, params)
@@ -277,9 +286,9 @@ class DatabaseManager:
     def get_tables(self) -> Dict[str, Any]:
         """Get list of all tables in the database"""
         query = """
-        SELECT table_name 
-        FROM information_schema.tables 
-        WHERE table_schema = 'public' 
+        SELECT table_name
+        FROM information_schema.tables
+        WHERE table_schema = 'public'
         AND table_type = 'BASE TABLE'
         ORDER BY table_name
         """

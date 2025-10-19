@@ -6,7 +6,7 @@ import logging
 from typing import List, Dict, Any, Callable, Coroutine
 from mcp import Resource
 
-from .database import DatabaseManager, DatabaseError
+from .database import DatabaseManager
 from .config import load_config
 
 logger = logging.getLogger(__name__)
@@ -51,7 +51,7 @@ class DatabaseResourceManager:
 
             # Get table schema information
             query = """
-            SELECT 
+            SELECT
                 column_name,
                 data_type,
                 is_nullable,
@@ -59,7 +59,7 @@ class DatabaseResourceManager:
                 character_maximum_length,
                 numeric_precision,
                 numeric_scale
-            FROM information_schema.columns 
+            FROM information_schema.columns
             WHERE table_schema = %s AND table_name = %s
             ORDER BY ordinal_position
             """
@@ -70,7 +70,7 @@ class DatabaseResourceManager:
 
             # Get table constraints
             constraints_query = """
-            SELECT 
+            SELECT
                 tc.constraint_name,
                 tc.constraint_type,
                 kcu.column_name
@@ -94,11 +94,23 @@ class DatabaseResourceManager:
 
             # Columns section
             content += "## Columns\n\n"
-            content += "| Column Name | Data Type | Nullable | Default | Max Length | Precision | Scale |\n"
-            content += "|-------------|-----------|----------|---------|------------|-----------|-------|\n"
+            content += (
+                "| Column Name | Data Type | Nullable | Default | "
+                "Max Length | Precision | Scale |\n"
+            )
+            content += (
+                "|-------------|-----------|----------|---------|"
+                "------------|-----------|-------|\n"
+            )
 
             for col in columns:
-                content += f"| {col['column_name']} | {col['data_type']} | {col['is_nullable']} | {col['column_default'] or 'NULL'} | {col['character_maximum_length'] or '-'} | {col['numeric_precision'] or '-'} | {col['numeric_scale'] or '-'} |\n"
+                content += (
+                    f"| {col['column_name']} | {col['data_type']} | "
+                    f"{col['is_nullable']} | {col['column_default'] or 'NULL'} | "
+                    f"{col['character_maximum_length'] or '-'} | "
+                    f"{col['numeric_precision'] or '-'} | "
+                    f"{col['numeric_scale'] or '-'} |\n"
+                )
 
             content += "\n"
 
@@ -109,7 +121,11 @@ class DatabaseResourceManager:
                 content += "|-----------------|------|--------|\n"
 
                 for constraint in constraints:
-                    content += f"| {constraint['constraint_name']} | {constraint['constraint_type']} | {constraint['column_name'] or '-'} |\n"
+                    content += (
+                        f"| {constraint['constraint_name']} | "
+                        f"{constraint['constraint_type']} | "
+                        f"{constraint['column_name'] or '-'} |\n"
+                    )
 
             return content
 
@@ -136,7 +152,10 @@ class DatabaseResourceManager:
 
             # Get database size
             size_result = self.db_manager.connection.execute_query(
-                "SELECT pg_size_pretty(pg_database_size(current_database())) as database_size;"
+                (
+                    "SELECT pg_size_pretty(pg_database_size(current_database())) "
+                    "as database_size;"
+                )
             )
             database_size = (
                 size_result[0]["database_size"] if size_result else "Unknown"
@@ -144,7 +163,10 @@ class DatabaseResourceManager:
 
             # Get number of tables
             tables_count_result = self.db_manager.connection.execute_query(
-                "SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = 'public';"
+                (
+                    "SELECT COUNT(*) as table_count FROM information_schema.tables "
+                    "WHERE table_schema = 'public';"
+                )
             )
             table_count = (
                 tables_count_result[0]["table_count"] if tables_count_result else 0
@@ -153,7 +175,7 @@ class DatabaseResourceManager:
             self.db_manager.connection.disconnect()
 
             # Format content
-            content = f"# Database Information\n\n"
+            content = "# Database Information\n\n"
             content += (
                 f"**Database Name**: {db_info.get('current_database', 'Unknown')}\n"
             )

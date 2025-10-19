@@ -3,7 +3,7 @@ Schema tools for PostgreSQL MCP Server
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Callable, Coroutine
+from typing import Any, Dict, List, Callable, Coroutine
 from mcp import Tool
 
 from ..database import DatabaseManager, DatabaseError
@@ -21,7 +21,7 @@ get_tables = Tool(
         "properties": {
             "schema": {
                 "type": "string",
-                "description": "Schema name to filter tables (default: 'public')",
+                "description": ("Schema name to filter tables (default: 'public')"),
                 "default": "public",
             }
         },
@@ -96,7 +96,7 @@ async def handle_get_table_schema(
 
         # Query to get table schema information
         query = """
-        SELECT 
+        SELECT
             column_name,
             data_type,
             is_nullable,
@@ -104,7 +104,7 @@ async def handle_get_table_schema(
             character_maximum_length,
             numeric_precision,
             numeric_scale
-        FROM information_schema.columns 
+        FROM information_schema.columns
         WHERE table_schema = %s AND table_name = %s
         ORDER BY ordinal_position
         """
@@ -115,7 +115,7 @@ async def handle_get_table_schema(
 
         # Get table constraints
         constraints_query = """
-        SELECT 
+        SELECT
             tc.constraint_name,
             tc.constraint_type,
             kcu.column_name
@@ -171,13 +171,19 @@ async def handle_get_database_info() -> Dict[str, Any]:
 
         # Get database size
         size_result = db_manager.connection.execute_query(
-            "SELECT pg_size_pretty(pg_database_size(current_database())) as database_size;"
+            (
+                "SELECT pg_size_pretty(pg_database_size(current_database())) "
+                "as database_size;"
+            )
         )
         database_size = size_result[0]["database_size"] if size_result else "Unknown"
 
         # Get number of tables
         tables_count_result = db_manager.connection.execute_query(
-            "SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = 'public';"
+            (
+                "SELECT COUNT(*) as table_count FROM information_schema.tables "
+                "WHERE table_schema = 'public';"
+            )
         )
         table_count = (
             tables_count_result[0]["table_count"] if tables_count_result else 0

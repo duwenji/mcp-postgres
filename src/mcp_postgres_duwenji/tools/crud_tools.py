@@ -25,7 +25,7 @@ create_entity = Tool(
             },
             "data": {
                 "type": "object",
-                "description": "Dictionary of column names and values to insert",
+                "description": ("Dictionary of column names and values to insert"),
                 "additionalProperties": True,
             },
         },
@@ -51,7 +51,7 @@ read_entity = Tool(
             },
             "limit": {
                 "type": "integer",
-                "description": "Maximum number of rows to return (default: 100)",
+                "description": ("Maximum number of rows to return (default: 100)"),
                 "default": 100,
                 "minimum": 1,
                 "maximum": 1000,
@@ -74,7 +74,7 @@ update_entity = Tool(
             },
             "conditions": {
                 "type": "object",
-                "description": "WHERE conditions to identify which rows to update",
+                "description": ("WHERE conditions to identify which rows to update"),
                 "additionalProperties": True,
             },
             "updates": {
@@ -100,7 +100,7 @@ delete_entity = Tool(
             },
             "conditions": {
                 "type": "object",
-                "description": "WHERE conditions to identify which rows to delete",
+                "description": ("WHERE conditions to identify which rows to delete"),
                 "additionalProperties": True,
             },
         },

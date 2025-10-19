@@ -5,7 +5,7 @@ Main entry point for PostgreSQL MCP Server
 import asyncio
 import logging
 import sys
-from typing import Any, Dict, List, Coroutine
+from typing import Any, Dict, List
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
@@ -22,7 +22,8 @@ from mcp import Resource, Tool
 
 # Configure logging
 logging.basicConfig(
-    level=logging.INFO, format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    level=logging.INFO,
+    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
 
@@ -31,7 +32,7 @@ async def main() -> None:
     """Main entry point for the MCP server"""
     try:
         # Load configuration
-        config = load_config()
+        _ = load_config()
         logger.info("Configuration loaded successfully")
 
     except Exception as e:
