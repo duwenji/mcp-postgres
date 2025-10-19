@@ -1,7 +1,3 @@
-"""
-Unit tests for configuration management
-"""
-
 import os
 import sys
 import pytest
@@ -10,12 +6,17 @@ from unittest.mock import patch
 # Add src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-from mcp_postgres_duwenji.config import (
+from mcp_postgres_duwenji.config import (  # noqa: E402
     PostgresConfig,
     ServerConfig,
     load_config,
     get_connection_string,
 )
+
+
+"""
+Unit tests for configuration management
+"""
 
 
 class TestPostgresConfig:
@@ -187,7 +188,10 @@ class TestConnectionString:
         )
 
         conn_str = get_connection_string(config)
-        expected = "postgresql://secure_user:secure_pass@secure-host:5432/secure_db?sslmode=require"
+        expected = (
+            "postgresql://secure_user:secure_pass@secure-host:5432/secure_db"
+            "?sslmode=require"
+        )
         assert conn_str == expected
 
     def test_connection_string_prefer_ssl(self):

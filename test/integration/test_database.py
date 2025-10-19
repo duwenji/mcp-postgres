@@ -1,21 +1,21 @@
-"""
-Integration tests for database operations
-"""
-
 import os
 import sys
 import pytest
-import asyncio
 
 # Add src directory to Python path
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
-from mcp_postgres_duwenji.config import PostgresConfig, load_config
-from mcp_postgres_duwenji.database import (
+from mcp_postgres_duwenji.config import PostgresConfig  # noqa: E402
+from mcp_postgres_duwenji.database import (  # noqa: E402
     DatabaseManager,
     DatabaseConnection,
     DatabaseError,
 )
+
+
+"""
+Integration tests for database operations
+"""
 
 
 @pytest.mark.integration
@@ -171,7 +171,7 @@ class TestDatabaseQueries:
     def test_execute_insert_query(self, db_manager):
         """Test executing INSERT query"""
         query = """
-        INSERT INTO products (name, price, description) 
+        INSERT INTO products (name, price, description)
         VALUES (%(name)s, %(price)s, %(description)s)
         RETURNING *
         """
@@ -436,7 +436,7 @@ class TestTableManagement:
     def test_invalid_table_name(self, db_manager):
         """Test operations with invalid table name"""
         columns = [{"name": "id", "type": "INTEGER"}]
-        
+
         with pytest.raises(DatabaseError):
             db_manager.create_table("invalid-table-name", columns)
 
@@ -444,7 +444,7 @@ class TestTableManagement:
         """Test operations with invalid column name"""
         table_name = "test_invalid_column"
         columns = [{"name": "invalid-column", "type": "INTEGER"}]
-        
+
         with pytest.raises(DatabaseError):
             db_manager.create_table(table_name, columns)
 
@@ -458,6 +458,6 @@ class TestTableManagement:
         table_name = "test_empty_ops"
         columns = [{"name": "id", "type": "INTEGER"}]
         db_manager.create_table(table_name, columns)
-        
+
         with pytest.raises(DatabaseError):
             db_manager.alter_table(table_name, [])
