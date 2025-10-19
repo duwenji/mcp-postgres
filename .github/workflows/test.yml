@@ -125,6 +125,47 @@ jobs:
       run: |
         uv run mypy src/ --ignore-missing-imports
 
+  lint:
+    name: Lint and Type Check
+    runs-on: ubuntu-latest
+    needs: test
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+    
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: "3.10"
+    
+    - name: Install uv
+      run: |
+        curl -LsSf https://astral.sh/uv/install.sh | sh
+        echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+    
+    - name: Install dependencies
+      run: |
+        uv sync --group dev
+    
+    - name: Run flake8
+      env:
+        PYTHONPATH: ${{ github.workspace }}/src
+      run: |
+        uv run flake8 src/ --count --show-source --statistics
+    
+    - name: Run mypy
+      env:
+        PYTHONPATH: ${{ github.workspace }}/src
+      run: |
+        uv run mypy src/
+    
+    - name: Run black check
+      env:
+        PYTHONPATH: ${{ github.workspace }}/src
+      run: |
+        uv run black --check src/ test/
+
   security-scan:
     name: Security Scan
     runs-on: ubuntu-latest
