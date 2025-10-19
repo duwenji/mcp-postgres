@@ -5,7 +5,7 @@ import os
 import pytest
 from unittest.mock import patch
 
-from src.config import PostgresConfig, ServerConfig, load_config, get_connection_string
+from src.mcp_postgres_duwenji.config import PostgresConfig, ServerConfig, load_config, get_connection_string
 
 
 class TestPostgresConfig:
