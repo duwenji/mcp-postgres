@@ -156,9 +156,7 @@ class DatabaseManager:
 
         columns = ", ".join(data.keys())
         placeholders = ", ".join([f"%({key})s" for key in data.keys()])
-        query = (
-            f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) RETURNING *"  # nosec
-        )
+        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) RETURNING *"  # nosec
 
         try:
             results = self.connection.execute_query(query, data)
@@ -268,9 +266,7 @@ class DatabaseManager:
             where_clauses.append(f"{key} = %({key})s")
             params[key] = value
 
-        query = (
-            f"DELETE FROM {table_name} WHERE {' AND '.join(where_clauses)} RETURNING *"  # nosec
-        )
+        query = f"DELETE FROM {table_name} WHERE {' AND '.join(where_clauses)} RETURNING *"  # nosec
 
         try:
             results = self.connection.execute_query(query, params)
