@@ -113,8 +113,13 @@ class DatabaseConnection:
                 return False
             with self._connection.cursor() as cursor:
                 cursor.execute("SELECT version();")
-                version = cursor.fetchone()
-                logger.info(f"PostgreSQL version: {version['version']}")
+                version_result = cursor.fetchone()
+                # RealDictCursorを使用しているので辞書として扱う
+                if version_result and isinstance(version_result, dict):
+                    version_str = version_result.get('version', 'Unknown')
+                else:
+                    version_str = str(version_result) if version_result else 'Unknown'
+                logger.info(f"PostgreSQL version: {version_str}")
             return True
         except (DatabaseError, psycopg2.Error) as e:
             logger.error(f"Connection test failed: {e}")

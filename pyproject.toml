@@ -80,6 +80,7 @@ dev = [
     "mypy>=1.0.0",
     "freezegun>=1.0.0",
     "bandit>=1.7.0",
+    "types-psycopg2>=2.9.21.20251012",
 ]
 # UV-specific configuration
 # This enables better integration with UV package manager
