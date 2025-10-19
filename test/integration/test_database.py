@@ -266,3 +266,198 @@ class TestDatabaseTransactions:
         final_count = final_result["count"]
 
         assert initial_count == final_count, "Transaction should have been rolled back"
+
+
+@pytest.mark.integration
+class TestTableManagement:
+    """Test table management operations"""
+
+    @pytest.fixture
+    def db_manager(self, test_database_config, clean_test_database):
+        """Create database manager for tests"""
+        config = PostgresConfig(**test_database_config)
+        manager = DatabaseManager(config)
+        manager.connection.connect()
+        yield manager
+        manager.connection.disconnect()
+
+    def test_create_table(self, db_manager):
+        """Test creating a new table"""
+        table_name = "test_create_table"
+        columns = [
+            {"name": "id", "type": "SERIAL", "primary_key": True},
+            {"name": "name", "type": "VARCHAR(100)", "nullable": False},
+            {"name": "description", "type": "TEXT", "nullable": True},
+            {"name": "created_at", "type": "TIMESTAMP", "default": "NOW()"},
+        ]
+
+        result = db_manager.create_table(table_name, columns)
+
+        assert result["success"] is True
+        assert f"Table {table_name} created successfully" in result["message"]
+
+        # Verify table exists
+        tables_result = db_manager.get_tables()
+        assert table_name in tables_result["tables"]
+
+    def test_create_table_if_not_exists(self, db_manager):
+        """Test creating table with IF NOT EXISTS"""
+        table_name = "test_if_not_exists"
+        columns = [
+            {"name": "id", "type": "INTEGER", "primary_key": True},
+            {"name": "value", "type": "VARCHAR(50)"},
+        ]
+
+        # Create table first time
+        result1 = db_manager.create_table(table_name, columns, if_not_exists=True)
+        assert result1["success"] is True
+
+        # Try to create again with IF NOT EXISTS (should succeed)
+        result2 = db_manager.create_table(table_name, columns, if_not_exists=True)
+        assert result2["success"] is True
+
+    def test_alter_table_add_column(self, db_manager):
+        """Test adding a column to existing table"""
+        # First create a table
+        table_name = "test_alter_table"
+        columns = [
+            {"name": "id", "type": "SERIAL", "primary_key": True},
+            {"name": "name", "type": "VARCHAR(100)"},
+        ]
+        db_manager.create_table(table_name, columns)
+
+        # Add a new column
+        operations = [
+            {
+                "type": "add_column",
+                "column_name": "email",
+                "data_type": "VARCHAR(255)",
+                "nullable": True,
+            }
+        ]
+
+        result = db_manager.alter_table(table_name, operations)
+        assert result["success"] is True
+
+    def test_alter_table_drop_column(self, db_manager):
+        """Test dropping a column from existing table"""
+        # First create a table with multiple columns
+        table_name = "test_drop_column"
+        columns = [
+            {"name": "id", "type": "SERIAL", "primary_key": True},
+            {"name": "name", "type": "VARCHAR(100)"},
+            {"name": "temp_column", "type": "VARCHAR(50)"},
+        ]
+        db_manager.create_table(table_name, columns)
+
+        # Drop the temporary column
+        operations = [
+            {
+                "type": "drop_column",
+                "column_name": "temp_column",
+            }
+        ]
+
+        result = db_manager.alter_table(table_name, operations)
+        assert result["success"] is True
+
+    def test_alter_table_rename_column(self, db_manager):
+        """Test renaming a column"""
+        # First create a table
+        table_name = "test_rename_column"
+        columns = [
+            {"name": "id", "type": "SERIAL", "primary_key": True},
+            {"name": "old_name", "type": "VARCHAR(100)"},
+        ]
+        db_manager.create_table(table_name, columns)
+
+        # Rename the column
+        operations = [
+            {
+                "type": "rename_column",
+                "column_name": "old_name",
+                "new_column_name": "new_name",
+            }
+        ]
+
+        result = db_manager.alter_table(table_name, operations)
+        assert result["success"] is True
+
+    def test_alter_table_alter_column(self, db_manager):
+        """Test altering column properties"""
+        # First create a table
+        table_name = "test_alter_column"
+        columns = [
+            {"name": "id", "type": "SERIAL", "primary_key": True},
+            {"name": "description", "type": "VARCHAR(100)", "nullable": True},
+        ]
+        db_manager.create_table(table_name, columns)
+
+        # Alter the column
+        operations = [
+            {
+                "type": "alter_column",
+                "column_name": "description",
+                "data_type": "TEXT",
+                "nullable": False,
+            }
+        ]
+
+        result = db_manager.alter_table(table_name, operations)
+        assert result["success"] is True
+
+    def test_drop_table(self, db_manager):
+        """Test dropping a table"""
+        # First create a table
+        table_name = "test_drop_table"
+        columns = [
+            {"name": "id", "type": "SERIAL", "primary_key": True},
+            {"name": "data", "type": "VARCHAR(100)"},
+        ]
+        db_manager.create_table(table_name, columns)
+
+        # Verify table exists
+        tables_result = db_manager.get_tables()
+        assert table_name in tables_result["tables"]
+
+        # Drop the table
+        result = db_manager.drop_table(table_name)
+        assert result["success"] is True
+
+        # Verify table no longer exists
+        tables_result = db_manager.get_tables()
+        assert table_name not in tables_result["tables"]
+
+    def test_drop_table_if_exists(self, db_manager):
+        """Test dropping non-existent table with IF EXISTS"""
+        result = db_manager.drop_table("non_existent_table", if_exists=True)
+        assert result["success"] is True
+
+    def test_invalid_table_name(self, db_manager):
+        """Test operations with invalid table name"""
+        columns = [{"name": "id", "type": "INTEGER"}]
+        
+        with pytest.raises(DatabaseError):
+            db_manager.create_table("invalid-table-name", columns)
+
+    def test_invalid_column_name(self, db_manager):
+        """Test operations with invalid column name"""
+        table_name = "test_invalid_column"
+        columns = [{"name": "invalid-column", "type": "INTEGER"}]
+        
+        with pytest.raises(DatabaseError):
+            db_manager.create_table(table_name, columns)
+
+    def test_empty_columns(self, db_manager):
+        """Test creating table with no columns"""
+        with pytest.raises(DatabaseError):
+            db_manager.create_table("empty_table", [])
+
+    def test_empty_operations(self, db_manager):
+        """Test altering table with no operations"""
+        table_name = "test_empty_ops"
+        columns = [{"name": "id", "type": "INTEGER"}]
+        db_manager.create_table(table_name, columns)
+        
+        with pytest.raises(DatabaseError):
+            db_manager.alter_table(table_name, [])

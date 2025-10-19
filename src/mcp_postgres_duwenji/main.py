@@ -13,6 +13,7 @@ from .config import load_config
 from .database import DatabaseManager
 from .tools.crud_tools import get_crud_tools, get_crud_handlers
 from .tools.schema_tools import get_schema_tools, get_schema_handlers
+from .tools.table_tools import get_table_tools, get_table_handlers
 from .resources import (
     get_database_resources,
     get_resource_handlers,
@@ -47,10 +48,12 @@ async def main() -> None:
     crud_handlers = get_crud_handlers()
     schema_tools = get_schema_tools()
     schema_handlers = get_schema_handlers()
+    table_tools = get_table_tools()
+    table_handlers = get_table_handlers()
 
     # Combine all tools and handlers
-    all_tools = crud_tools + schema_tools
-    all_handlers = {**crud_handlers, **schema_handlers}
+    all_tools = crud_tools + schema_tools + table_tools
+    all_handlers = {**crud_handlers, **schema_handlers, **table_handlers}
 
     # Register tool handlers
     @server.call_tool()
