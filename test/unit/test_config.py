@@ -98,7 +98,7 @@ class TestLoadConfig:
         ):
             print("DEBUG: Environment in test:", dict(os.environ))
             config = load_config()
-            print("DEBUG: Loaded config:", config.postgres.dict())
+            print("DEBUG: Loaded config:", config.postgres.model_dump())
 
             assert config.postgres.host == "test-host"
             assert config.postgres.database == "test-db"
