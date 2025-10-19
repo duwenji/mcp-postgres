@@ -41,7 +41,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        uv sync
+        uv sync --group dev
     
     - name: Run tests
       env:
@@ -80,7 +80,7 @@ jobs:
     
     - name: Install dependencies
       run: |
-        uv sync
+        uv sync --group dev
     
     - name: Run flake8
       env:
