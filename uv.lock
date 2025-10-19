@@ -723,7 +723,7 @@ wheels = [
 
 [[package]]
 name = "mcp-postgres-duwenji"
-version = "0.0.1"
+version = "0.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "build" },
@@ -750,8 +750,16 @@ dev = [
 
 [package.dev-dependencies]
 dev = [
+    { name = "bandit" },
+    { name = "black" },
+    { name = "flake8" },
+    { name = "freezegun" },
+    { name = "mypy" },
     { name = "pytest" },
+    { name = "pytest-asyncio" },
     { name = "pytest-cov" },
+    { name = "pytest-mock" },
+    { name = "pytest-xdist" },
 ]
 
 [package.metadata]
@@ -777,8 +785,16 @@ provides-extras = ["dev"]
 
 [package.metadata.requires-dev]
 dev = [
+    { name = "bandit", specifier = ">=1.7.0" },
+    { name = "black", specifier = ">=23.0.0" },
+    { name = "flake8", specifier = ">=6.0.0" },
+    { name = "freezegun", specifier = ">=1.0.0" },
+    { name = "mypy", specifier = ">=1.0.0" },
     { name = "pytest", specifier = ">=8.4.2" },
+    { name = "pytest-asyncio", specifier = ">=0.21.0" },
     { name = "pytest-cov", specifier = ">=7.0.0" },
+    { name = "pytest-mock", specifier = ">=3.0.0" },
+    { name = "pytest-xdist", specifier = ">=3.0.0" },
 ]
 
 [[package]]
