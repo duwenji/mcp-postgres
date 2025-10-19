@@ -1,6 +1,6 @@
 [project]
 name = "mcp-postgres-duwenji"
-version = "1.0.1"
+version = "0.0.1"
 description = "MCP server for PostgreSQL database operations"
 authors = [
     { name = "mcp-postgres" },

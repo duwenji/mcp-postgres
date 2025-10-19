@@ -8,7 +8,7 @@ import pytest
 import asyncio
 
 # Add src directory to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 from mcp_postgres_duwenji.config import PostgresConfig, load_config
 from mcp_postgres_duwenji.database import (

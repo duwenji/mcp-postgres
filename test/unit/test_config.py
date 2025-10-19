@@ -8,7 +8,7 @@ import pytest
 from unittest.mock import patch
 
 # Add src directory to Python path
-sys.path.insert(0, os.path.join(os.path.dirname(__file__), '..', '..', 'src'))
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 
 from mcp_postgres_duwenji.config import (
     PostgresConfig,

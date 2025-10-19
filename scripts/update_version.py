@@ -22,13 +22,29 @@ def get_current_version():
     
     content = pyproject_path.read_text(encoding="utf-8")
     
-    # バージョン番号の抽出
-    version_match = re.search(r'version\s*=\s*"([^"]+)"', content)
-    if not version_match:
-        print("エラー: バージョン番号が見つかりません")
-        sys.exit(1)
+    # [project] セクション内の version フィールドのみを抽出
+    lines = content.splitlines()
+    in_project_section = False
     
-    return version_match.group(1)
+    for line in lines:
+        line = line.strip()
+        
+        # セクションの開始を検出
+        if line == "[project]":
+            in_project_section = True
+            continue
+        elif line.startswith("[") and line.endswith("]"):
+            in_project_section = False
+            continue
+        
+        # [project] セクション内で version フィールドを検索
+        if in_project_section and line.startswith("version"):
+            version_match = re.search(r'version\s*=\s*"([^"]+)"', line)
+            if version_match:
+                return version_match.group(1)
+    
+    print("エラー: [project] セクション内のバージョン番号が見つかりません")
+    sys.exit(1)
 
 
 def update_version(new_version):
@@ -36,21 +52,44 @@ def update_version(new_version):
     pyproject_path = Path("pyproject.toml")
     content = pyproject_path.read_text(encoding="utf-8")
     
-    # バージョン番号の更新
-    old_content = content
-    content = re.sub(
-        r'version\s*=\s*"[^"]+"',
-        f'version = "{new_version}"',
-        content
-    )
+    # [project] セクション内の version フィールドのみを更新
+    lines = content.splitlines()
+    in_project_section = False
+    updated = False
     
-    if content == old_content:
-        print("エラー: バージョン番号の更新に失敗しました")
+    for i, line in enumerate(lines):
+        original_line = line
+        line = line.strip()
+        
+        # セクションの開始を検出
+        if line == "[project]":
+            in_project_section = True
+            continue
+        elif line.startswith("[") and line.endswith("]"):
+            in_project_section = False
+            continue
+        
+        # [project] セクション内で version フィールドを更新
+        if in_project_section and line.startswith("version"):
+            version_match = re.search(r'version\s*=\s*"([^"]+)"', original_line)
+            if version_match:
+                old_version = version_match.group(1)
+                # バージョン番号を置換
+                lines[i] = re.sub(
+                    r'version\s*=\s*"[^"]+"',
+                    f'version = "{new_version}"',
+                    original_line
+                )
+                updated = True
+                break
+    
+    if not updated:
+        print("エラー: [project] セクション内のバージョン番号の更新に失敗しました")
         sys.exit(1)
     
     # ファイルへの書き込み
-    pyproject_path.write_text(content, encoding="utf-8")
-    print(f"バージョンを {get_current_version()} から {new_version} に更新しました")
+    pyproject_path.write_text("\n".join(lines), encoding="utf-8")
+    print(f"バージョンを {old_version} から {new_version} に更新しました")
 
 
 def parse_version(version_str):
