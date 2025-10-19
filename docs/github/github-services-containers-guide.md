@@ -272,6 +272,18 @@ steps:
       uv run pytest -v --cov=src --cov-report=xml
 ```
 
+### このプロジェクトの依存関係管理
+```yaml
+- name: Install uv
+  run: |
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+- name: Install dependencies
+  run: |
+    uv sync
+```
+
 ## ベストプラクティス
 
 ### 1. ヘルスチェックの実装

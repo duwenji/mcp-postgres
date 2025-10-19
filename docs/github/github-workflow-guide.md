@@ -82,20 +82,28 @@ on:
 #### ジョブ構成
 1. **テストジョブ**
    - PostgreSQLサービスを使用したテスト実行
+   - uvを使用した依存関係管理
    - カバレッジレポート生成
    - Codecovへのレポートアップロード
 
 2. **リントジョブ**
    - コード品質チェック
    - flake8, mypy, blackによる静的解析
+   - uvを使用した依存関係管理
 
 3. **ビルドジョブ**
    - パッケージビルド
    - 成果物の保存
+   - testとlintジョブの完了を待機
 
 4. **公開ジョブ**
    - PyPIへの公開
    - OIDC認証を使用した安全な公開
+   - 環境保護の設定
+
+5. **TestPyPI公開ジョブ**
+   - 手動実行時のみTestPyPIへの公開
+   - テスト環境でのパッケージ検証
 
 #### サービスコンテナの活用
 ```yaml
@@ -113,6 +121,32 @@ services:
       --health-retries 5
     ports:
       - 5432:5432
+```
+
+#### 実際の実装の特徴
+- **uvの活用**: 高速なPythonパッケージ管理
+- **OIDC認証**: PyPI公開時の安全な認証
+- **条件付き実行**: TestPyPI公開は手動実行時のみ
+- **成果物共有**: ビルド成果物の保存と再利用
+- **環境保護**: 本番公開時の環境設定
+
+#### 依存関係管理の実装
+```yaml
+- name: Install uv
+  run: |
+    curl -LsSf https://astral.sh/uv/install.sh | sh
+    echo "$HOME/.cargo/bin" >> $GITHUB_PATH
+
+- name: Install dependencies
+  run: |
+    uv sync
+```
+
+#### セキュアな公開設定
+```yaml
+environment: release
+permissions:
+  id-token: write  # OIDCトークン用の権限
 ```
 
 ## ベストプラクティス

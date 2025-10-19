@@ -34,7 +34,7 @@ GitHub Actionsでのサービスコンテナ使用方法：
 - **ファイル**: `.github/workflows/publish.yml`
 - **目的**: Pythonパッケージの自動公開
 - **トリガー**: リリース公開時、手動実行
-- **機能**: テスト、リント、ビルド、PyPI公開
+- **機能**: テスト、リント、ビルド、PyPI公開、TestPyPI公開
 
 #### 2. 主要なGitHubファイル
 - `README.md` / `README_ja.md` - プロジェクト説明
@@ -47,10 +47,11 @@ GitHub Actionsでのサービスコンテナ使用方法：
 #### マルチステージ構成
 ```yaml
 jobs:
-  test:     # テスト実行
-  lint:     # コード品質チェック
-  build:    # パッケージビルド
-  publish:  # PyPI公開
+  test:           # テスト実行（PostgreSQLサービス使用）
+  lint:           # コード品質チェック
+  build:          # パッケージビルド
+  publish:        # PyPI公開（OIDC認証）
+  publish-testpypi: # TestPyPI公開（手動実行時のみ）
 ```
 
 #### サービスコンテナの活用
