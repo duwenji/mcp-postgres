@@ -401,9 +401,7 @@ class DatabaseManager:
                     nullable = operation.get("nullable", True)
                     default = operation.get("default")
 
-                    query = (
-                        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {data_type}"  # nosec
-                    )
+                    query = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {data_type}"  # nosec
                     if not nullable:
                         query += " NOT NULL"
                     if default:
@@ -493,9 +491,7 @@ class DatabaseManager:
 
         if_exists_clause = "IF EXISTS " if if_exists else ""
         cascade_clause = " CASCADE" if cascade else ""
-        query = (
-            f"DROP TABLE {if_exists_clause}{table_name}{cascade_clause}"  # nosec
-        )
+        query = f"DROP TABLE {if_exists_clause}{table_name}{cascade_clause}"  # nosec
 
         try:
             self.connection.execute_query(query)
