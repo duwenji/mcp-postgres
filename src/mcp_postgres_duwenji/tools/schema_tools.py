@@ -109,7 +109,9 @@ async def handle_get_table_schema(
         ORDER BY ordinal_position
         """
 
-        results = db_manager.connection.execute_query(query, {"schema": schema, "table_name": table_name})
+        results = db_manager.connection.execute_query(
+            query, {"schema": schema, "table_name": table_name}
+        )
 
         # Get table constraints
         constraints_query = """
@@ -213,7 +215,9 @@ def get_schema_tools() -> List[Tool]:
     ]
 
 
-def get_schema_handlers() -> Dict[str, Callable[..., Coroutine[Any, Any, Dict[str, Any]]]]:
+def get_schema_handlers() -> (
+    Dict[str, Callable[..., Coroutine[Any, Any, Dict[str, Any]]]]
+):
     """Get tool handlers for schema operations"""
     return {
         "get_tables": handle_get_tables,

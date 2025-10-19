@@ -167,8 +167,10 @@ jobs:
       run: |
         pip install uv
 
-    - name: Install Bandit
-      run: uv pip install bandit
+    - name: Install development dependencies with uv
+      run: |
+        uv venv
+        uv pip install -e ".[dev]"
 
     - name: Run Bandit security scan
       run: uv run bandit -r src/ -f json -o bandit-report.json

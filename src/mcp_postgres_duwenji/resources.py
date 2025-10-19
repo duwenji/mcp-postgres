@@ -206,7 +206,9 @@ def get_resource_handlers() -> Dict[str, Callable[[], Coroutine[Any, Any, str]]]
     }
 
 
-def get_table_schema_resource_handler() -> Callable[[str, str], Coroutine[Any, Any, str]]:
+def get_table_schema_resource_handler() -> (
+    Callable[[str, str], Coroutine[Any, Any, str]]
+):
     """Get table schema resource handler factory"""
     resource_manager = DatabaseResourceManager()
     return resource_manager.get_table_schema_resource

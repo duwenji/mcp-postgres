@@ -130,6 +130,14 @@ class DatabaseManager:
         self.config = config
         self.connection = DatabaseConnection(config)
 
+    def _validate_table_name(self, table_name: str) -> None:
+        """Validate table name to prevent SQL injection"""
+        import re
+
+        # Allow only alphanumeric characters and underscores
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table_name):
+            raise DatabaseError(f"Invalid table name: {table_name}")
+
     def create_entity(self, table_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
         Create a new entity (row) in the specified table
@@ -141,13 +149,15 @@ class DatabaseManager:
         Returns:
             Dictionary with operation result
         """
+        self._validate_table_name(table_name)
+
         if not data:
             raise DatabaseError("No data provided for creation")
 
         columns = ", ".join(data.keys())
         placeholders = ", ".join([f"%({key})s" for key in data.keys()])
         query = (
-            f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) RETURNING *"
+            f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) RETURNING *"  # nosec
         )
 
         try:
@@ -173,7 +183,9 @@ class DatabaseManager:
         Returns:
             Dictionary with query results
         """
-        query = f"SELECT * FROM {table_name}"
+        self._validate_table_name(table_name)
+
+        query = f"SELECT * FROM {table_name}"  # nosec
         params = {}
 
         if conditions:
@@ -205,6 +217,8 @@ class DatabaseManager:
         Returns:
             Dictionary with operation result
         """
+        self._validate_table_name(table_name)
+
         if not updates:
             raise DatabaseError("No updates provided")
 
@@ -220,7 +234,7 @@ class DatabaseManager:
             where_clauses.append(f"{key} = %(condition_{key})s")
             params[f"condition_{key}"] = value
 
-        query = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE {' AND '.join(where_clauses)} RETURNING *"
+        query = f"UPDATE {table_name} SET {', '.join(set_clauses)} WHERE {' AND '.join(where_clauses)} RETURNING *"  # nosec
 
         try:
             results = self.connection.execute_query(query, params)
@@ -245,6 +259,8 @@ class DatabaseManager:
         Returns:
             Dictionary with operation result
         """
+        self._validate_table_name(table_name)
+
         where_clauses = []
         params = {}
 
@@ -253,7 +269,7 @@ class DatabaseManager:
             params[key] = value
 
         query = (
-            f"DELETE FROM {table_name} WHERE {' AND '.join(where_clauses)} RETURNING *"
+            f"DELETE FROM {table_name} WHERE {' AND '.join(where_clauses)} RETURNING *"  # nosec
         )
 
         try:

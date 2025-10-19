@@ -219,7 +219,9 @@ def get_crud_tools() -> List[Tool]:
     ]
 
 
-def get_crud_handlers() -> Dict[str, Callable[..., Coroutine[Any, Any, Dict[str, Any]]]]:
+def get_crud_handlers() -> (
+    Dict[str, Callable[..., Coroutine[Any, Any, Dict[str, Any]]]]
+):
     """Get tool handlers for CRUD operations"""
     return {
         "create_entity": handle_create_entity,
