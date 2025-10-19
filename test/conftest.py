@@ -5,7 +5,7 @@ Pytest configuration for PostgreSQL MCP Server tests
 import os
 import pytest
 import asyncio
-from typing import AsyncGenerator, Dict, Any
+from typing import Dict, Any
 
 # Configure test environment
 os.environ["POSTGRES_HOST"] = os.getenv("POSTGRES_HOST", "localhost")

@@ -2,6 +2,8 @@
 
 PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サーバーです。このサーバーはAIアシスタントに標準化されたインターフェースを通じてPostgreSQLデータベースのCRUD操作と管理機能を提供します。
 
+**プロジェクト状態**: ✅ **完了** - 完全実装、テスト済み、PyPIに公開済み
+
 ## 機能
 
 - **エンティティCRUD操作**: PostgreSQLテーブルでの作成、読み取り、更新、削除操作
@@ -9,6 +11,9 @@ PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サ
 - **安全な接続管理**: 環境変数ベースの設定と検証
 - **パラメータ化クエリ**: SQLインジェクション攻撃からの保護
 - **柔軟なクエリ**: 複雑な条件と結果制限のサポート
+- **テーブル管理**: テーブルの動的な作成、変更、削除
+- **スキーマ情報**: 詳細なテーブルスキーマとデータベースメタデータの取得
+- **包括的テスト**: 単体テスト、統合テスト、Dockerテスト環境
 
 ## 利用可能なツール
 
@@ -17,6 +22,11 @@ PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サ
 - `read_entity`: オプションの条件付きでテーブルをクエリ
 - `update_entity`: 条件に基づいて既存の行を更新
 - `delete_entity`: テーブルから行を削除
+
+### テーブル管理操作
+- `create_table`: 指定されたスキーマで新しいテーブルを作成
+- `alter_table`: 既存のテーブル構造を変更
+- `drop_table`: データベースからテーブルを削除
 
 ### スキーマ操作
 - `get_tables`: データベース内の全テーブル一覧を取得
@@ -40,7 +50,12 @@ PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サ
 
 ### インストール
 
-1. **MCPクライアントを設定**（例：Claude Desktop）:
+1. **PyPIからインストール**:
+   ```bash
+   uvx mcp-postgres-duwenji
+   ```
+
+2. **MCPクライアントを設定**（例：Claude Desktop）:
    MCPクライアントの設定にサーバー設定を追加し、`uvx`を使用します：
 
    **Claude Desktop設定例**:
@@ -130,13 +145,18 @@ mcp-postgres/
 │       └── tools/                # MCPツール定義
 │           ├── __init__.py
 │           ├── crud_tools.py     # CRUD操作ツール
-│           └── schema_tools.py   # スキーマ操作ツール
+│           ├── schema_tools.py   # スキーマ操作ツール
+│           └── table_tools.py    # テーブル管理ツール
 ├── test/                         # テスト関連
 │   ├── unit/                     # ユニットテスト
 │   ├── integration/              # 統合テスト
 │   ├── docker/                   # Dockerテスト環境
 │   └── docs/                     # テストドキュメント
 ├── docs/                         # プロジェクトドキュメント
+│   ├── code-quality-checks-guide.md      # コード品質ツールガイド
+│   ├── linting-and-type-checking-guide.md # リンターとタイプチェックガイド
+│   ├── pypi-publishing-guide.md          # PyPI公開ガイド
+│   └── github/                           # GitHubワークフローとガイド
 ├── examples/                     # 設定例
 ├── scripts/                      # ユーティリティスクリプト
 ├── memory-bank/                  # プロジェクトメモリバンク
@@ -155,11 +175,22 @@ mcp-postgres/
 uvx mcp-postgres-duwenji
 ```
 
+### コード品質ツール
+
+このプロジェクトでは包括的なコード品質ツールを使用しています:
+
+- **Black**: コードフォーマット
+- **Flake8**: リンターとスタイルチェック
+- **MyPy**: 静的型チェック
+- **Bandit**: セキュリティスキャン
+
+詳細な使用方法については `docs/code-quality-checks-guide.md` と `docs/linting-and-type-checking-guide.md` を参照してください。
+
 ### 新しいツールの追加
 
 1. `src/mcp_postgres_duwenji/tools/`に新しいツール定義を作成
 2. ツールハンドラー関数を追加
-3. `get_crud_tools()`と`get_crud_handlers()`にツールを登録
+3. 適切なハンドラー関数にツールを登録
 4. ツールはMCPインターフェースを通じて自動的に利用可能になります
 
 ## セキュリティ考慮事項

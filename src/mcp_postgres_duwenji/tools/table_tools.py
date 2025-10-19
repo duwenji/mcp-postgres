@@ -3,7 +3,7 @@ Table management tools for PostgreSQL MCP Server
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Callable, Coroutine
+from typing import Any, Dict, List, Callable, Coroutine
 from mcp import Tool
 
 from ..database import DatabaseManager, DatabaseError
@@ -29,11 +29,31 @@ create_table = Tool(
                     "type": "object",
                     "properties": {
                         "name": {"type": "string", "description": "Column name"},
-                        "type": {"type": "string", "description": "Data type (e.g., VARCHAR(255), INTEGER, TEXT)"},
-                        "nullable": {"type": "boolean", "default": True, "description": "Whether column can be NULL"},
-                        "primary_key": {"type": "boolean", "default": False, "description": "Whether column is primary key"},
-                        "unique": {"type": "boolean", "default": False, "description": "Whether column has unique constraint"},
-                        "default": {"type": "string", "description": "Default value for the column"},
+                        "type": {
+                            "type": "string",
+                            "description": (
+                                "Data type (e.g., VARCHAR(255), INTEGER, TEXT)"
+                            ),
+                        },
+                        "nullable": {
+                            "type": "boolean",
+                            "default": True,
+                            "description": "Whether column can be NULL",
+                        },
+                        "primary_key": {
+                            "type": "boolean",
+                            "default": False,
+                            "description": "Whether column is primary key",
+                        },
+                        "unique": {
+                            "type": "boolean",
+                            "default": False,
+                            "description": "Whether column has unique constraint",
+                        },
+                        "default": {
+                            "type": "string",
+                            "description": "Default value for the column",
+                        },
                     },
                     "required": ["name", "type"],
                 },
@@ -67,7 +87,12 @@ alter_table = Tool(
                     "properties": {
                         "type": {
                             "type": "string",
-                            "enum": ["add_column", "drop_column", "alter_column", "rename_column"],
+                            "enum": [
+                                "add_column",
+                                "drop_column",
+                                "alter_column",
+                                "rename_column",
+                            ],
                             "description": "Type of operation to perform",
                         },
                         "column_name": {
@@ -76,19 +101,27 @@ alter_table = Tool(
                         },
                         "new_column_name": {
                             "type": "string",
-                            "description": "New name for the column (for rename operations)",
+                            "description": (
+                                "New name for the column (for rename operations)"
+                            ),
                         },
                         "data_type": {
                             "type": "string",
-                            "description": "Data type for the column (for add/alter operations)",
+                            "description": (
+                                "Data type for the column (for add/alter operations)"
+                            ),
                         },
                         "nullable": {
                             "type": "boolean",
-                            "description": "Whether column can be NULL (for add/alter operations)",
+                            "description": (
+                                "Whether column can be NULL (for add/alter operations)"
+                            ),
                         },
                         "default": {
                             "type": "string",
-                            "description": "Default value for the column (for add/alter operations)",
+                            "description": (
+                                "Default value for the column (for add/alter operations)"
+                            ),
                         },
                     },
                     "required": ["type", "column_name"],

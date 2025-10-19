@@ -330,7 +330,7 @@ class DatabaseManager:
         for column in columns:
             name = column["name"]
             data_type = column["type"]
-            
+
             # Validate column name
             if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", name):
                 raise DatabaseError(f"Invalid column name: {name}")
@@ -340,13 +340,13 @@ class DatabaseManager:
             # Add constraints
             if not column.get("nullable", True):
                 definition += " NOT NULL"
-            
+
             if column.get("primary_key", False):
                 definition += " PRIMARY KEY"
-            
+
             if column.get("unique", False):
                 definition += " UNIQUE"
-            
+
             if "default" in column:
                 definition += f" DEFAULT {column['default']}"
 
@@ -354,15 +354,23 @@ class DatabaseManager:
 
         # Build CREATE TABLE query
         if_exists_clause = "IF NOT EXISTS " if if_not_exists else ""
-        query = f"CREATE TABLE {if_exists_clause}{table_name} ({', '.join(column_definitions)})"  # nosec
+        query = (
+            f"CREATE TABLE {if_exists_clause}{table_name} "
+            f"({', '.join(column_definitions)})"  # nosec
+        )
 
         try:
-            results = self.connection.execute_query(query)
-            return {"success": True, "message": f"Table {table_name} created successfully"}
+            self.connection.execute_query(query)
+            return {
+                "success": True,
+                "message": f"Table {table_name} created successfully",
+            }
         except DatabaseError as e:
             return {"success": False, "error": str(e)}
 
-    def alter_table(self, table_name: str, operations: List[Dict[str, Any]]) -> Dict[str, Any]:
+    def alter_table(
+        self, table_name: str, operations: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
         """
         Modify table structure
 
@@ -392,55 +400,84 @@ class DatabaseManager:
                     data_type = operation["data_type"]
                     nullable = operation.get("nullable", True)
                     default = operation.get("default")
-                    
-                    query = f"ALTER TABLE {table_name} ADD COLUMN {column_name} {data_type}"  # nosec
+
+                    query = (
+                        f"ALTER TABLE {table_name} ADD COLUMN {column_name} {data_type}"  # nosec
+                    )
                     if not nullable:
                         query += " NOT NULL"
                     if default:
                         query += f" DEFAULT {default}"
-                    
+
                     self.connection.execute_query(query)
 
                 elif op_type == "drop_column":
-                    query = f"ALTER TABLE {table_name} DROP COLUMN {column_name}"  # nosec
+                    query = (
+                        f"ALTER TABLE {table_name} DROP COLUMN {column_name}"  # nosec
+                    )
                     self.connection.execute_query(query)
 
                 elif op_type == "alter_column":
                     data_type = operation["data_type"]
                     nullable = operation.get("nullable")
                     default = operation.get("default")
-                    
-                    query = f"ALTER TABLE {table_name} ALTER COLUMN {column_name} TYPE {data_type}"  # nosec
+
+                    query = (
+                        f"ALTER TABLE {table_name} ALTER COLUMN {column_name} "
+                        f"TYPE {data_type}"  # nosec
+                    )
                     self.connection.execute_query(query)
-                    
+
                     if nullable is not None:
                         if nullable:
-                            query = f"ALTER TABLE {table_name} ALTER COLUMN {column_name} DROP NOT NULL"  # nosec
+                            query = (
+                                f"ALTER TABLE {table_name} ALTER COLUMN {column_name} "
+                                f"DROP NOT NULL"  # nosec
+                            )
                         else:
-                            query = f"ALTER TABLE {table_name} ALTER COLUMN {column_name} SET NOT NULL"  # nosec
+                            query = (
+                                f"ALTER TABLE {table_name} ALTER COLUMN {column_name} "
+                                f"SET NOT NULL"  # nosec
+                            )
                         self.connection.execute_query(query)
-                    
+
                     if default is not None:
                         if default == "":
-                            query = f"ALTER TABLE {table_name} ALTER COLUMN {column_name} DROP DEFAULT"  # nosec
+                            query = (
+                                f"ALTER TABLE {table_name} ALTER COLUMN {column_name} "
+                                f"DROP DEFAULT"  # nosec
+                            )
                         else:
-                            query = f"ALTER TABLE {table_name} ALTER COLUMN {column_name} SET DEFAULT {default}"  # nosec
+                            query = (
+                                f"ALTER TABLE {table_name} ALTER COLUMN {column_name} "
+                                f"SET DEFAULT {default}"  # nosec
+                            )
                         self.connection.execute_query(query)
 
                 elif op_type == "rename_column":
                     new_column_name = operation["new_column_name"]
                     if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", new_column_name):
-                        raise DatabaseError(f"Invalid new column name: {new_column_name}")
-                    
-                    query = f"ALTER TABLE {table_name} RENAME COLUMN {column_name} TO {new_column_name}"  # nosec
+                        raise DatabaseError(
+                            f"Invalid new column name: {new_column_name}"
+                        )
+
+                    query = (
+                        f"ALTER TABLE {table_name} RENAME COLUMN {column_name} "
+                        f"TO {new_column_name}"  # nosec
+                    )
                     self.connection.execute_query(query)
 
-            return {"success": True, "message": f"Table {table_name} altered successfully"}
+            return {
+                "success": True,
+                "message": f"Table {table_name} altered successfully",
+            }
 
         except DatabaseError as e:
             return {"success": False, "error": str(e)}
 
-    def drop_table(self, table_name: str, cascade: bool = False, if_exists: bool = True) -> Dict[str, Any]:
+    def drop_table(
+        self, table_name: str, cascade: bool = False, if_exists: bool = True
+    ) -> Dict[str, Any]:
         """
         Delete a table from the database
 
@@ -456,10 +493,15 @@ class DatabaseManager:
 
         if_exists_clause = "IF EXISTS " if if_exists else ""
         cascade_clause = " CASCADE" if cascade else ""
-        query = f"DROP TABLE {if_exists_clause}{table_name}{cascade_clause}"  # nosec
+        query = (
+            f"DROP TABLE {if_exists_clause}{table_name}{cascade_clause}"  # nosec
+        )
 
         try:
-            results = self.connection.execute_query(query)
-            return {"success": True, "message": f"Table {table_name} dropped successfully"}
+            self.connection.execute_query(query)
+            return {
+                "success": True,
+                "message": f"Table {table_name} dropped successfully",
+            }
         except DatabaseError as e:
             return {"success": False, "error": str(e)}

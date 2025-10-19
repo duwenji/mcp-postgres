@@ -2,6 +2,8 @@
 
 A Model Context Protocol (MCP) server for PostgreSQL database operations. This server provides AI assistants with the ability to perform CRUD operations and manage PostgreSQL databases through a standardized interface.
 
+**Project Status**: ✅ **COMPLETED** - Fully implemented, tested, and published to PyPI
+
 ## Features
 
 - **Entity CRUD Operations**: Create, read, update, and delete entities in PostgreSQL tables
@@ -9,6 +11,9 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. This s
 - **Secure Connection Management**: Environment variable-based configuration with validation
 - **Parameterized Queries**: Protection against SQL injection attacks
 - **Flexible Querying**: Support for complex conditions and result limiting
+- **Table Management**: Create, alter, and drop tables dynamically
+- **Schema Information**: Get detailed table schemas and database metadata
+- **Comprehensive Testing**: Unit tests, integration tests, and Docker test environment
 
 ## Available Tools
 
@@ -17,6 +22,11 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. This s
 - `read_entity`: Query tables with optional conditions
 - `update_entity`: Update existing rows based on conditions
 - `delete_entity`: Remove rows from tables
+
+### Table Management Operations
+- `create_table`: Create new tables with specified schema
+- `alter_table`: Modify existing table structures
+- `drop_table`: Remove tables from database
 
 ### Schema Operations
 - `get_tables`: Get list of all tables in the database
@@ -40,7 +50,12 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. This s
 
 ### Installation
 
-1. **Configure your MCP client** (e.g., Claude Desktop):
+1. **Install from PyPI**:
+   ```bash
+   uvx mcp-postgres-duwenji
+   ```
+
+2. **Configure your MCP client** (e.g., Claude Desktop):
    Add the server configuration to your MCP client settings using `uvx`:
 
    **Claude Desktop Configuration Example**:
@@ -131,13 +146,18 @@ mcp-postgres/
 │       └── tools/                # MCP tool definitions
 │           ├── __init__.py
 │           ├── crud_tools.py     # CRUD operation tools
-│           └── schema_tools.py   # Schema operation tools
+│           ├── schema_tools.py   # Schema operation tools
+│           └── table_tools.py    # Table management tools
 ├── test/                         # Testing related
 │   ├── unit/                     # Unit tests
 │   ├── integration/              # Integration tests
 │   ├── docker/                   # Docker test environment
 │   └── docs/                     # Test documentation
 ├── docs/                         # Project documentation
+│   ├── code-quality-checks-guide.md      # Code quality tools guide
+│   ├── linting-and-type-checking-guide.md # Linting and type checking guide
+│   ├── pypi-publishing-guide.md          # PyPI publishing guide
+│   └── github/                           # GitHub workflows and guides
 ├── examples/                     # Configuration examples
 ├── scripts/                      # Utility scripts
 ├── memory-bank/                  # Project memory bank
@@ -156,11 +176,22 @@ To run the server directly for testing:
 uvx mcp-postgres-duwenji
 ```
 
+### Code Quality Tools
+
+This project uses comprehensive code quality tools:
+
+- **Black**: Code formatting
+- **Flake8**: Linting and style checking
+- **MyPy**: Static type checking
+- **Bandit**: Security scanning
+
+See `docs/code-quality-checks-guide.md` and `docs/linting-and-type-checking-guide.md` for detailed usage instructions.
+
 ### Adding New Tools
 
 1. Create a new tool definition in `src/mcp_postgres_duwenji/tools/`
 2. Add the tool handler function
-3. Register the tool in `get_crud_tools()` and `get_crud_handlers()`
+3. Register the tool in the appropriate handler function
 4. The tool will be automatically available through the MCP interface
 
 ## Security Considerations
