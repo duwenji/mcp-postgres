@@ -25,6 +25,20 @@ GitHub Actionsでのサービスコンテナ使用方法：
 - ヘルスチェックとトラブルシューティング
 - ベストプラクティスとセキュリティ
 
+### 🔒 [GitHub Security Scan 完全ガイド](github-security-scan-guide.md)
+GitHub Actionsでのセキュリティスキャン実装：
+- Banditを使用したPythonコードセキュリティスキャン
+- セキュリティスキャンの設定とトラブルシューティング
+- ベストプラクティスと高度な設定
+- 他のセキュリティツールとの統合
+
+### ⚡ [GitHub Workflow Black Formatter 完全ガイド](github-black-formatter-guide.md)
+GitHub ActionsでのBlackフォーマッタの使用方法：
+- Blackフォーマッタの基本概念と設定
+- ワークフローでの実装方法
+- 一般的なエラーとトラブルシューティング
+- ベストプラクティスと高度な設定
+
 ## このプロジェクトのGitHub実装
 
 ### 現在の構成

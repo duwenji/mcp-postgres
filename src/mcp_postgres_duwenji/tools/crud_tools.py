@@ -21,16 +21,16 @@ create_entity = Tool(
         "properties": {
             "table_name": {
                 "type": "string",
-                "description": "Name of the table to insert into"
+                "description": "Name of the table to insert into",
             },
             "data": {
                 "type": "object",
                 "description": "Dictionary of column names and values to insert",
-                "additionalProperties": True
-            }
+                "additionalProperties": True,
+            },
         },
-        "required": ["table_name", "data"]
-    }
+        "required": ["table_name", "data"],
+    },
 )
 
 
@@ -42,23 +42,23 @@ read_entity = Tool(
         "properties": {
             "table_name": {
                 "type": "string",
-                "description": "Name of the table to query"
+                "description": "Name of the table to query",
             },
             "conditions": {
                 "type": "object",
                 "description": "Optional WHERE conditions as key-value pairs",
-                "additionalProperties": True
+                "additionalProperties": True,
             },
             "limit": {
                 "type": "integer",
                 "description": "Maximum number of rows to return (default: 100)",
                 "default": 100,
                 "minimum": 1,
-                "maximum": 1000
-            }
+                "maximum": 1000,
+            },
         },
-        "required": ["table_name"]
-    }
+        "required": ["table_name"],
+    },
 )
 
 
@@ -70,21 +70,21 @@ update_entity = Tool(
         "properties": {
             "table_name": {
                 "type": "string",
-                "description": "Name of the table to update"
+                "description": "Name of the table to update",
             },
             "conditions": {
                 "type": "object",
                 "description": "WHERE conditions to identify which rows to update",
-                "additionalProperties": True
+                "additionalProperties": True,
             },
             "updates": {
                 "type": "object",
                 "description": "Dictionary of columns and values to update",
-                "additionalProperties": True
-            }
+                "additionalProperties": True,
+            },
         },
-        "required": ["table_name", "conditions", "updates"]
-    }
+        "required": ["table_name", "conditions", "updates"],
+    },
 )
 
 
@@ -96,16 +96,16 @@ delete_entity = Tool(
         "properties": {
             "table_name": {
                 "type": "string",
-                "description": "Name of the table to delete from"
+                "description": "Name of the table to delete from",
             },
             "conditions": {
                 "type": "object",
                 "description": "WHERE conditions to identify which rows to delete",
-                "additionalProperties": True
-            }
+                "additionalProperties": True,
+            },
         },
-        "required": ["table_name", "conditions"]
-    }
+        "required": ["table_name", "conditions"],
+    },
 )
 
 
@@ -115,17 +115,17 @@ async def handle_create_entity(table_name: str, data: Dict[str, Any]) -> Dict[st
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        
+
         # Connect to database
         db_manager.connection.connect()
-        
+
         result = db_manager.create_entity(table_name, data)
-        
+
         # Disconnect from database
         db_manager.connection.disconnect()
-        
+
         return result
-        
+
     except DatabaseError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
@@ -134,25 +134,23 @@ async def handle_create_entity(table_name: str, data: Dict[str, Any]) -> Dict[st
 
 
 async def handle_read_entity(
-    table_name: str, 
-    conditions: Optional[Dict[str, Any]] = None,
-    limit: int = 100
+    table_name: str, conditions: Optional[Dict[str, Any]] = None, limit: int = 100
 ) -> Dict[str, Any]:
     """Handle read entity tool execution"""
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        
+
         # Connect to database
         db_manager.connection.connect()
-        
+
         result = db_manager.read_entity(table_name, conditions, limit)
-        
+
         # Disconnect from database
         db_manager.connection.disconnect()
-        
+
         return result
-        
+
     except DatabaseError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
@@ -161,25 +159,23 @@ async def handle_read_entity(
 
 
 async def handle_update_entity(
-    table_name: str, 
-    conditions: Dict[str, Any], 
-    updates: Dict[str, Any]
+    table_name: str, conditions: Dict[str, Any], updates: Dict[str, Any]
 ) -> Dict[str, Any]:
     """Handle update entity tool execution"""
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        
+
         # Connect to database
         db_manager.connection.connect()
-        
+
         result = db_manager.update_entity(table_name, conditions, updates)
-        
+
         # Disconnect from database
         db_manager.connection.disconnect()
-        
+
         return result
-        
+
     except DatabaseError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
@@ -188,24 +184,23 @@ async def handle_update_entity(
 
 
 async def handle_delete_entity(
-    table_name: str, 
-    conditions: Dict[str, Any]
+    table_name: str, conditions: Dict[str, Any]
 ) -> Dict[str, Any]:
     """Handle delete entity tool execution"""
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        
+
         # Connect to database
         db_manager.connection.connect()
-        
+
         result = db_manager.delete_entity(table_name, conditions)
-        
+
         # Disconnect from database
         db_manager.connection.disconnect()
-        
+
         return result
-        
+
     except DatabaseError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:

@@ -153,11 +153,11 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
 
+    - name: Install Bandit
+      run: uv pip install bandit
+
     - name: Run Bandit security scan
-      uses: py-actions/bandit@v3.1.1
-      with:
-        targets: src/
-        args: "-r -f json -o bandit-report.json"
+      run: uv run bandit -r src/ -f json -o bandit-report.json
 
     - name: Upload Bandit report
       uses: actions/upload-artifact@v4

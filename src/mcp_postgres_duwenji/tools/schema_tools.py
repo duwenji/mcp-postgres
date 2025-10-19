@@ -22,11 +22,11 @@ get_tables = Tool(
             "schema": {
                 "type": "string",
                 "description": "Schema name to filter tables (default: 'public')",
-                "default": "public"
+                "default": "public",
             }
         },
-        "required": []
-    }
+        "required": [],
+    },
 )
 
 
@@ -38,27 +38,23 @@ get_table_schema = Tool(
         "properties": {
             "table_name": {
                 "type": "string",
-                "description": "Name of the table to get schema for"
+                "description": "Name of the table to get schema for",
             },
             "schema": {
                 "type": "string",
                 "description": "Schema name (default: 'public')",
-                "default": "public"
-            }
+                "default": "public",
+            },
         },
-        "required": ["table_name"]
-    }
+        "required": ["table_name"],
+    },
 )
 
 
 get_database_info = Tool(
     name="get_database_info",
     description="Get database metadata and version information",
-    inputSchema={
-        "type": "object",
-        "properties": {},
-        "required": []
-    }
+    inputSchema={"type": "object", "properties": {}, "required": []},
 )
 
 
@@ -68,18 +64,18 @@ async def handle_get_tables(schema: str = "public") -> Dict[str, Any]:
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        
+
         # Connect to database
         db_manager.connection.connect()
-        
+
         # Use existing get_tables method
         result = db_manager.get_tables()
-        
+
         # Disconnect from database
         db_manager.connection.disconnect()
-        
+
         return result
-        
+
     except DatabaseError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
@@ -87,15 +83,17 @@ async def handle_get_tables(schema: str = "public") -> Dict[str, Any]:
         return {"success": False, "error": f"Internal server error: {str(e)}"}
 
 
-async def handle_get_table_schema(table_name: str, schema: str = "public") -> Dict[str, Any]:
+async def handle_get_table_schema(
+    table_name: str, schema: str = "public"
+) -> Dict[str, Any]:
     """Handle get_table_schema tool execution"""
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        
+
         # Connect to database
         db_manager.connection.connect()
-        
+
         # Query to get table schema information
         query = """
         SELECT 
@@ -110,9 +108,9 @@ async def handle_get_table_schema(table_name: str, schema: str = "public") -> Di
         WHERE table_schema = %s AND table_name = %s
         ORDER BY ordinal_position
         """
-        
+
         results = db_manager.connection.execute_query(query, (schema, table_name))
-        
+
         # Get table constraints
         constraints_query = """
         SELECT 
@@ -127,20 +125,22 @@ async def handle_get_table_schema(table_name: str, schema: str = "public") -> Di
         WHERE tc.table_schema = %s AND tc.table_name = %s
         ORDER BY tc.constraint_type, tc.constraint_name
         """
-        
-        constraints = db_manager.connection.execute_query(constraints_query, (schema, table_name))
-        
+
+        constraints = db_manager.connection.execute_query(
+            constraints_query, (schema, table_name)
+        )
+
         # Disconnect from database
         db_manager.connection.disconnect()
-        
+
         return {
             "success": True,
             "table_name": table_name,
             "schema": schema,
             "columns": results,
-            "constraints": constraints
+            "constraints": constraints,
         }
-        
+
     except DatabaseError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:
@@ -153,35 +153,37 @@ async def handle_get_database_info() -> Dict[str, Any]:
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        
+
         # Connect to database
         db_manager.connection.connect()
-        
+
         # Get database version
         version_result = db_manager.connection.execute_query("SELECT version();")
         version = version_result[0]["version"] if version_result else "Unknown"
-        
+
         # Get database name and current user
         db_info_result = db_manager.connection.execute_query(
             "SELECT current_database(), current_user, current_schema();"
         )
         db_info = db_info_result[0] if db_info_result else {}
-        
+
         # Get database size
         size_result = db_manager.connection.execute_query(
             "SELECT pg_size_pretty(pg_database_size(current_database())) as database_size;"
         )
         database_size = size_result[0]["database_size"] if size_result else "Unknown"
-        
+
         # Get number of tables
         tables_count_result = db_manager.connection.execute_query(
             "SELECT COUNT(*) as table_count FROM information_schema.tables WHERE table_schema = 'public';"
         )
-        table_count = tables_count_result[0]["table_count"] if tables_count_result else 0
-        
+        table_count = (
+            tables_count_result[0]["table_count"] if tables_count_result else 0
+        )
+
         # Disconnect from database
         db_manager.connection.disconnect()
-        
+
         return {
             "success": True,
             "database_info": {
@@ -190,10 +192,10 @@ async def handle_get_database_info() -> Dict[str, Any]:
                 "current_user": db_info.get("current_user", "Unknown"),
                 "current_schema": db_info.get("current_schema", "Unknown"),
                 "database_size": database_size,
-                "table_count": table_count
-            }
+                "table_count": table_count,
+            },
         }
-        
+
     except DatabaseError as e:
         return {"success": False, "error": str(e)}
     except Exception as e:

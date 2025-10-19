@@ -1,6 +1,7 @@
 """
 Pytest configuration for PostgreSQL MCP Server tests
 """
+
 import os
 import pytest
 import asyncio
@@ -41,12 +42,18 @@ def setup_test_environment():
     """Setup test environment before each test."""
     # Ensure test environment variables are set
     original_env = {}
-    for key in ["POSTGRES_HOST", "POSTGRES_PORT", "POSTGRES_DB", 
-                "POSTGRES_USER", "POSTGRES_PASSWORD", "POSTGRES_SSL_MODE"]:
+    for key in [
+        "POSTGRES_HOST",
+        "POSTGRES_PORT",
+        "POSTGRES_DB",
+        "POSTGRES_USER",
+        "POSTGRES_PASSWORD",
+        "POSTGRES_SSL_MODE",
+    ]:
         original_env[key] = os.environ.get(key)
-    
+
     yield
-    
+
     # Restore original environment
     for key, value in original_env.items():
         if value is None:
@@ -60,29 +67,31 @@ def clean_test_database(test_database_config):
     """Clean test database before running tests."""
     from src.mcp_postgres_duwenji.database import DatabaseManager
     from src.mcp_postgres_duwenji.config import PostgresConfig
-    
+
     config = PostgresConfig(**test_database_config)
     manager = DatabaseManager(config)
-    
+
     try:
         # Connect to database
         manager.connection.connect()
-        
+
         # Clean test data
         print("Cleaning test database...")
-        
+
         # Delete test data in reverse order to respect foreign key constraints
         manager.connection.execute_query("DELETE FROM orders")
         manager.connection.execute_query("DELETE FROM products")
         manager.connection.execute_query("DELETE FROM users")
-        
+
         # Reset sequences
         manager.connection.execute_query("ALTER SEQUENCE users_id_seq RESTART WITH 1")
-        manager.connection.execute_query("ALTER SEQUENCE products_id_seq RESTART WITH 1")
+        manager.connection.execute_query(
+            "ALTER SEQUENCE products_id_seq RESTART WITH 1"
+        )
         manager.connection.execute_query("ALTER SEQUENCE orders_id_seq RESTART WITH 1")
-        
+
         print("Test database cleaned successfully")
-        
+
     except Exception as e:
         print(f"Warning: Could not clean test database: {e}")
     finally:
@@ -97,16 +106,14 @@ def pytest_configure(config):
     config.addinivalue_line(
         "markers", "unit: mark test as unit test (no external dependencies)"
     )
-    config.addinivalue_line(
-        "markers", "slow: mark test as slow running"
-    )
+    config.addinivalue_line("markers", "slow: mark test as slow running")
 
 
 def pytest_collection_modifyitems(config, items):
     """Modify test items based on markers and environment."""
     skip_integration = pytest.mark.skip(reason="integration tests require database")
     skip_slow = pytest.mark.skip(reason="slow test skipped by default")
-    
+
     for item in items:
         if "integration" in item.keywords and not os.getenv("RUN_INTEGRATION_TESTS"):
             item.add_marker(skip_integration)

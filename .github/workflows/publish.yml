@@ -91,7 +91,7 @@ jobs:
     
     - name: Run black check
       run: |
-        uv run black --check src/
+        uv run black --check src/ test/
 
   build:
     name: Build Package
