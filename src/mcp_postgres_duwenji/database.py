@@ -4,6 +4,9 @@ Database connection and operation management for PostgreSQL MCP Server
 
 import logging
 import re
+import datetime
+import decimal
+import uuid
 from typing import Any, Dict, List, Optional
 import psycopg2
 from psycopg2.extras import RealDictCursor
@@ -11,6 +14,23 @@ from psycopg2.extras import RealDictCursor
 from .config import PostgresConfig, get_connection_string
 
 logger = logging.getLogger(__name__)
+
+
+def convert_dates_for_json(obj: Any) -> Any:
+    """Convert date/datetime objects to ISO format strings for JSON serialization"""
+    if isinstance(obj, (datetime.date, datetime.datetime)):
+        return obj.isoformat()
+    elif isinstance(obj, datetime.time):
+        return obj.isoformat()
+    elif isinstance(obj, decimal.Decimal):
+        return float(obj)
+    elif isinstance(obj, uuid.UUID):
+        return str(obj)
+    elif isinstance(obj, dict):
+        return {k: convert_dates_for_json(v) for k, v in obj.items()}
+    elif isinstance(obj, list):
+        return [convert_dates_for_json(item) for item in obj]
+    return obj
 
 
 class DatabaseError(Exception):
@@ -70,7 +90,8 @@ class DatabaseConnection:
                 # For SELECT queries, fetch results
                 if query.strip().upper().startswith("SELECT"):
                     results = cursor.fetchall()
-                    return [dict(row) for row in results]
+                    converted_results = [convert_dates_for_json(dict(row)) for row in results]
+                    return converted_results
                 elif (
                     query.strip().upper().startswith("INSERT")
                     and "RETURNING" in query.upper()
@@ -78,7 +99,8 @@ class DatabaseConnection:
                     # For INSERT with RETURNING clause, fetch the inserted row
                     results = cursor.fetchall()
                     self._connection.commit()
-                    return [dict(row) for row in results]
+                    converted_results = [convert_dates_for_json(dict(row)) for row in results]
+                    return converted_results
                 elif (
                     query.strip().upper().startswith("UPDATE")
                     and "RETURNING" in query.upper()
@@ -86,7 +108,8 @@ class DatabaseConnection:
                     # For UPDATE with RETURNING clause, fetch the updated row
                     results = cursor.fetchall()
                     self._connection.commit()
-                    return [dict(row) for row in results]
+                    converted_results = [convert_dates_for_json(dict(row)) for row in results]
+                    return converted_results
                 elif (
                     query.strip().upper().startswith("DELETE")
                     and "RETURNING" in query.upper()
@@ -94,7 +117,8 @@ class DatabaseConnection:
                     # For DELETE with RETURNING clause, fetch the deleted rows
                     results = cursor.fetchall()
                     self._connection.commit()
-                    return [dict(row) for row in results]
+                    converted_results = [convert_dates_for_json(dict(row)) for row in results]
+                    return converted_results
                 else:
                     # For other queries, commit and return affected row count
                     self._connection.commit()
