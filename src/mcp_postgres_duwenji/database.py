@@ -90,7 +90,9 @@ class DatabaseConnection:
                 # For SELECT queries, fetch results
                 if query.strip().upper().startswith("SELECT"):
                     results = cursor.fetchall()
-                    converted_results = [convert_dates_for_json(dict(row)) for row in results]
+                    converted_results = [
+                        convert_dates_for_json(dict(row)) for row in results
+                    ]
                     return converted_results
                 elif (
                     query.strip().upper().startswith("INSERT")
@@ -99,7 +101,9 @@ class DatabaseConnection:
                     # For INSERT with RETURNING clause, fetch the inserted row
                     results = cursor.fetchall()
                     self._connection.commit()
-                    converted_results = [convert_dates_for_json(dict(row)) for row in results]
+                    converted_results = [
+                        convert_dates_for_json(dict(row)) for row in results
+                    ]
                     return converted_results
                 elif (
                     query.strip().upper().startswith("UPDATE")
@@ -108,7 +112,9 @@ class DatabaseConnection:
                     # For UPDATE with RETURNING clause, fetch the updated row
                     results = cursor.fetchall()
                     self._connection.commit()
-                    converted_results = [convert_dates_for_json(dict(row)) for row in results]
+                    converted_results = [
+                        convert_dates_for_json(dict(row)) for row in results
+                    ]
                     return converted_results
                 elif (
                     query.strip().upper().startswith("DELETE")
@@ -117,7 +123,9 @@ class DatabaseConnection:
                     # For DELETE with RETURNING clause, fetch the deleted rows
                     results = cursor.fetchall()
                     self._connection.commit()
-                    converted_results = [convert_dates_for_json(dict(row)) for row in results]
+                    converted_results = [
+                        convert_dates_for_json(dict(row)) for row in results
+                    ]
                     return converted_results
                 else:
                     # For other queries, commit and return affected row count
