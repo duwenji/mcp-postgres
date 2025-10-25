@@ -14,6 +14,12 @@ from .database import DatabaseManager
 from .tools.crud_tools import get_crud_tools, get_crud_handlers
 from .tools.schema_tools import get_schema_tools, get_schema_handlers
 from .tools.table_tools import get_table_tools, get_table_handlers
+from .tools.sampling_tools import get_sampling_tools, get_sampling_handlers
+from .tools.transaction_tools import get_transaction_tools, get_transaction_handlers
+from .tools.sampling_integration import (
+    get_sampling_integration_tools,
+    get_sampling_integration_handlers,
+)
 from .resources import (
     get_database_resources,
     get_resource_handlers,
@@ -50,10 +56,30 @@ async def main() -> None:
     schema_handlers = get_schema_handlers()
     table_tools = get_table_tools()
     table_handlers = get_table_handlers()
+    sampling_tools = get_sampling_tools()
+    sampling_handlers = get_sampling_handlers()
+    transaction_tools = get_transaction_tools()
+    transaction_handlers = get_transaction_handlers()
+    sampling_integration_tools = get_sampling_integration_tools()
+    sampling_integration_handlers = get_sampling_integration_handlers()
 
     # Combine all tools and handlers
-    all_tools = crud_tools + schema_tools + table_tools
-    all_handlers = {**crud_handlers, **schema_handlers, **table_handlers}
+    all_tools = (
+        crud_tools
+        + schema_tools
+        + table_tools
+        + sampling_tools
+        + transaction_tools
+        + sampling_integration_tools
+    )
+    all_handlers = {
+        **crud_handlers,
+        **schema_handlers,
+        **table_handlers,
+        **sampling_handlers,
+        **transaction_handlers,
+        **sampling_integration_handlers,
+    }
 
     # Register tool handlers
     @server.call_tool()

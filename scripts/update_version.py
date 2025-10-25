@@ -164,7 +164,9 @@ def main():
         "--major", action="store_true", help="メジャーバージョンをインクリメント"
     )
     group.add_argument("--set", metavar="VERSION", help="特定のバージョンに設定")
-    parser.add_argument("--auto-confirm", action="store_true", help="確認をスキップして自動更新")
+    parser.add_argument(
+        "--auto-confirm", action="store_true", help="確認をスキップして自動更新"
+    )
 
     args = parser.parse_args()
 
