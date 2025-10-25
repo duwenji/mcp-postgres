@@ -461,9 +461,9 @@ async def _gather_sample_data(
         for table_name in table_names:
             try:
                 # Get sample data
-                query = f"SELECT * FROM {table_name} LIMIT %s"
+                query = "SELECT * FROM %s LIMIT %s"
                 results = db_manager.connection.execute_query(
-                    query, {"limit": sample_size}
+                    query, {"table": table_name, "limit": sample_size}
                 )
                 sample_data[table_name] = {
                     "sample_size": len(results),
