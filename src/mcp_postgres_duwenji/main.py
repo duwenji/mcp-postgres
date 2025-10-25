@@ -32,6 +32,7 @@ from mcp import Resource, Tool
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+    filename="mcp_postgres.log",  # ファイル名を指定
 )
 logger = logging.getLogger(__name__)
 
@@ -41,7 +42,7 @@ async def main() -> None:
     try:
         # Load configuration
         config = load_config()
-        logger.info("Configuration loaded successfully")
+        logger.info(f"Configuration loaded successfully. config={config}")
 
         # Handle Docker auto-setup if enabled
         if config.docker.enabled:
