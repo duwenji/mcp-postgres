@@ -7,11 +7,10 @@ data analysis and quality improvement.
 
 import logging
 import json
-from typing import Any, Dict, List, Optional, Callable, Coroutine
+from typing import Any, Dict, List, Callable, Coroutine
 from mcp import Tool
-from mcp.server import Server
 
-from ..database import DatabaseManager, DatabaseError
+from ..database import DatabaseManager
 from ..config import load_config
 
 logger = logging.getLogger(__name__)
@@ -264,12 +263,10 @@ async def handle_generate_normalization_plan(
 
 async def handle_assess_data_quality(
     table_names: List[str],
-    quality_dimensions: List[str] = None,
+    quality_dimensions: List[str] = ["completeness", "accuracy", "consistency"],
     sample_size: int = 100,
 ) -> Dict[str, Any]:
     """Handle assess_data_quality tool execution"""
-    if quality_dimensions is None:
-        quality_dimensions = ["completeness", "accuracy", "consistency"]
 
     try:
         # Gather sample data for analysis
@@ -314,12 +311,10 @@ async def handle_assess_data_quality(
 
 async def handle_optimize_schema_with_llm(
     table_names: List[str],
-    optimization_goals: List[str] = None,
+    optimization_goals: List[str] = ["performance", "maintainability"],
     include_implementation_plan: bool = True,
 ) -> Dict[str, Any]:
     """Handle optimize_schema_with_llm tool execution"""
-    if optimization_goals is None:
-        optimization_goals = ["performance", "maintainability"]
 
     try:
         # Use MCP Sampling for schema optimization
@@ -467,7 +462,9 @@ async def _gather_sample_data(
             try:
                 # Get sample data
                 query = f"SELECT * FROM {table_name} LIMIT %s"
-                results = db_manager.connection.execute_query(query, (sample_size,))
+                results = db_manager.connection.execute_query(
+                    query, {"limit": sample_size}
+                )
                 sample_data[table_name] = {
                     "sample_size": len(results),
                     "columns": list(results[0].keys()) if results else [],

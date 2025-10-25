@@ -11,6 +11,7 @@ from mcp.server.stdio import stdio_server
 
 from .config import load_config
 from .database import DatabaseManager
+from .docker_manager import DockerManager
 from .tools.crud_tools import get_crud_tools, get_crud_handlers
 from .tools.schema_tools import get_schema_tools, get_schema_handlers
 from .tools.table_tools import get_table_tools, get_table_handlers
@@ -39,8 +40,27 @@ async def main() -> None:
     """Main entry point for the MCP server"""
     try:
         # Load configuration
-        _ = load_config()
+        config = load_config()
         logger.info("Configuration loaded successfully")
+
+        # Handle Docker auto-setup if enabled
+        if config.docker.enabled:
+            logger.info("Docker auto-setup enabled, starting PostgreSQL container...")
+            docker_manager = DockerManager(config.docker)
+
+            if docker_manager.is_docker_available():
+                result = docker_manager.start_container()
+                if result["success"]:
+                    logger.info(f"PostgreSQL container started successfully: {result}")
+                else:
+                    logger.error(
+                        f"Failed to start PostgreSQL container: {result.get('error', 'Unknown error')}"
+                    )
+                    # Continue without Docker setup - user might have external PostgreSQL
+            else:
+                logger.warning(
+                    "Docker auto-setup enabled but Docker is not available. Using existing PostgreSQL connection."
+                )
 
     except Exception as e:
         logger.error(f"Failed to load configuration: {e}")

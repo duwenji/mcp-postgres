@@ -100,8 +100,17 @@
 2. **CRUD操作**: create_entity, read_entity, update_entity, delete_entityの実装
 3. **テーブル管理**: create_table, alter_table, drop_tableの実装
 4. **スキーマ情報取得**: get_tables, get_table_schema, get_database_infoの実装
-5. **包括的テスト環境**: 単体テストと統合テストの実装
-6. **PyPI公開**: パッケージ公開と設定管理の実装
+5. **MCP Sampling機能**: LLM連携による高度なデータ分析機能の実装
+   - `request_llm_analysis`: 包括的なLLM分析リクエスト
+   - `generate_normalization_plan`: 正規化計画の生成
+   - `assess_data_quality`: データ品質評価
+   - `optimize_schema_with_llm`: スキーマ最適化
+6. **Docker自動構築**: PostgreSQL環境の自動セットアップ機能
+   - コンテナ自動起動と管理
+   - 環境変数による柔軟な設定
+   - ヘルスチェックと状態監視
+7. **包括的テスト環境**: 単体テストと統合テストの実装
+8. **PyPI公開**: パッケージ公開と設定管理の実装
 
 ### 品質保証
 - **単体テスト**: 設定管理のテスト実装済み

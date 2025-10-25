@@ -7,7 +7,7 @@ and rollback capabilities.
 
 import logging
 import uuid
-from typing import Any, Dict, List, Optional, Callable, Coroutine
+from typing import Any, Dict, List, Callable, Coroutine
 from datetime import datetime
 from mcp import Tool
 
@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 
 # In-memory session storage (in production, this should be persistent)
-_schema_change_sessions = {}
+_schema_change_sessions: Dict[str, Dict[str, Any]] = {}
 
 
 # Tool definitions for transaction operations
@@ -150,7 +150,7 @@ async def handle_begin_change_session(
         session_id = str(uuid.uuid4())
 
         # Create session
-        session = {
+        session: Dict[str, Any] = {
             "session_id": session_id,
             "created_at": datetime.now().isoformat(),
             "description": session_description,
@@ -214,7 +214,7 @@ async def handle_create_schema_backup(
         if session_id not in _schema_change_sessions:
             return {"success": False, "error": f"Session {session_id} not found"}
 
-        session = _schema_change_sessions[session_id]
+        session: Dict[str, Any] = _schema_change_sessions[session_id]
 
         if not session["backup_enabled"]:
             return {"success": False, "error": "Backup not enabled for this session"}
@@ -252,7 +252,7 @@ async def handle_apply_schema_changes(
         if session_id not in _schema_change_sessions:
             return {"success": False, "error": f"Session {session_id} not found"}
 
-        session = _schema_change_sessions[session_id]
+        session: Dict[str, Any] = _schema_change_sessions[session_id]
 
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
@@ -362,7 +362,7 @@ async def handle_rollback_schema_changes(
         if session_id not in _schema_change_sessions:
             return {"success": False, "error": f"Session {session_id} not found"}
 
-        session = _schema_change_sessions[session_id]
+        session: Dict[str, Any] = _schema_change_sessions[session_id]
 
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
@@ -414,7 +414,7 @@ async def handle_list_schema_backups(session_id: str) -> Dict[str, Any]:
         if session_id not in _schema_change_sessions:
             return {"success": False, "error": f"Session {session_id} not found"}
 
-        session = _schema_change_sessions[session_id]
+        session: Dict[str, Any] = _schema_change_sessions[session_id]
 
         return {
             "success": True,
@@ -433,7 +433,7 @@ async def handle_commit_schema_changes(session_id: str) -> Dict[str, Any]:
         if session_id not in _schema_change_sessions:
             return {"success": False, "error": f"Session {session_id} not found"}
 
-        session = _schema_change_sessions[session_id]
+        session: Dict[str, Any] = _schema_change_sessions[session_id]
 
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
@@ -486,8 +486,20 @@ async def _validate_schema_changes(db_manager: DatabaseManager) -> Dict[str, Any
         # Check if we can describe a sample table
         if tables_result["success"] and tables_result["tables"]:
             sample_table = tables_result["tables"][0]
-            schema_result = db_manager.get_table_schema(sample_table)
-            if not schema_result["success"]:
+            # Use direct query to get table schema instead of missing method
+            schema_query = """
+            SELECT column_name, data_type, is_nullable
+            FROM information_schema.columns
+            WHERE table_schema = 'public' AND table_name = %s
+            ORDER BY ordinal_position
+            """
+            try:
+                schema_result = db_manager.connection.execute_query(
+                    schema_query, {"table_name": sample_table}
+                )
+                if not schema_result:
+                    errors.append(f"Cannot describe table {sample_table} after changes")
+            except Exception:
                 errors.append(f"Cannot describe table {sample_table} after changes")
 
     except Exception as e:

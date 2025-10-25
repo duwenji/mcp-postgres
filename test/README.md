@@ -27,7 +27,7 @@ test/
 
 - Python 3.10以上
 - DockerとDocker Compose（統合テスト用）
-- PostgreSQL 15（ローカルテスト用）
+- PostgreSQL 16（ローカルテスト用）
 
 ### テストの実行
 
@@ -110,7 +110,7 @@ docker-compose -f docker-compose.test.yml down
 ### テスト環境の構成
 
 Docker Composeで構築されたテスト環境：
-- **postgres-test**: PostgreSQL 15データベース
+- **postgres-test**: PostgreSQL 16データベース
 - ポート: `5433` (ホスト) → `5432` (コンテナ)
 - データベース: `mcp_test_db`
 - ユーザー: `test_user`
@@ -187,7 +187,7 @@ uv run python test_connection.py
 
 ```bash
 # 一時的なPostgreSQLクライアントコンテナを作成
-docker run -it --rm --network mcp-postgres_test_default postgres:15 psql -h postgres-test -U test_user -d mcp_test_db
+docker run -it --rm --network mcp-postgres_test_default postgres:16 psql -h postgres-test -U test_user -d mcp_test_db
 ```
 
 ### 環境の停止

@@ -45,7 +45,7 @@ on:
 ```yaml
 services:
   postgres:
-    image: postgres:15
+    image: postgres:16
     env:
       POSTGRES_DB: mcp_test_db
       POSTGRES_USER: test_user
@@ -319,7 +319,7 @@ publish-testpypi:
 3. **再現環境の構築**
    ```bash
    # ローカルでのPostgreSQLセットアップ
-   docker run --name postgres-test -e POSTGRES_DB=mcp_test_db -e POSTGRES_USER=test_user -e POSTGRES_PASSWORD=test_password -p 5432:5432 -d postgres:15
+   docker run --name postgres-test -e POSTGRES_DB=mcp_test_db -e POSTGRES_USER=test_user -e POSTGRES_PASSWORD=test_password -p 5432:5432 -d postgres:16
    ```
 
 ## 次のステップ

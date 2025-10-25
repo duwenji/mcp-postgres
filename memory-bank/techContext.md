@@ -15,6 +15,9 @@
 - `psycopg2-binary>=2.9.0`: PostgreSQLデータベース接続
 - `pydantic>=2.0.0`: 設定バリデーション
 - `python-dotenv>=1.0.0`: 環境変数管理
+- `docker>=6.0.0`: Dockerコンテナ管理
+- `build>=1.3.0`: パッケージビルド
+- `twine>=6.2.0`: PyPI公開
 
 ## 開発環境設定
 
@@ -83,12 +86,11 @@ freezegun>=1.0.0
 ## ツール使用パターン
 
 ### MCPツール定義
-- **query_execute**: SQLクエリの実行
-- **get_tables**: テーブル一覧の取得
-- **get_table_schema**: テーブル構造の取得
-- **insert_data**: データの挿入
-- **update_data**: データの更新
-- **delete_data**: データの削除
+- **CRUD操作**: create_entity, read_entity, update_entity, delete_entity
+- **テーブル管理**: create_table, alter_table, drop_table
+- **スキーマ情報**: get_tables, get_table_schema, get_database_info
+- **MCP Sampling**: request_llm_analysis, generate_normalization_plan, assess_data_quality, optimize_schema_with_llm
+- **トランザクション**: トランザクション管理ツール
 
 ### リソース定義
 - **database_info**: データベース接続情報

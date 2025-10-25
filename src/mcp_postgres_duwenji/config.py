@@ -3,7 +3,9 @@ Configuration management for PostgreSQL MCP Server
 """
 
 import os
+import logging
 from pydantic import BaseModel, Field
+from .docker_manager import DockerConfig, load_docker_config
 
 
 class PostgresConfig(BaseModel):
@@ -33,6 +35,9 @@ class ServerConfig(BaseModel):
     # PostgreSQL configuration
     postgres: PostgresConfig = Field(default_factory=PostgresConfig)
 
+    # Docker auto-setup configuration
+    docker: DockerConfig = Field(default_factory=DockerConfig)
+
 
 def load_config() -> ServerConfig:
     """
@@ -49,7 +54,10 @@ def load_config() -> ServerConfig:
 
     load_dotenv()
 
-    # Load configuration from environment variables
+    # Load Docker configuration first
+    docker_config = load_docker_config()
+
+    # Load PostgreSQL configuration from environment variables
     host = os.environ.get("POSTGRES_HOST", "localhost")
     port = int(os.environ.get("POSTGRES_PORT", "5432"))
     database = os.environ.get("POSTGRES_DB", "postgres")
@@ -59,6 +67,16 @@ def load_config() -> ServerConfig:
     pool_size = int(os.environ.get("POSTGRES_POOL_SIZE", "5"))
     max_overflow = int(os.environ.get("POSTGRES_MAX_OVERFLOW", "10"))
     connect_timeout = int(os.environ.get("POSTGRES_CONNECT_TIMEOUT", "30"))
+
+    # If Docker auto-setup is enabled, use Docker container settings
+    if docker_config.enabled:
+        logger = logging.getLogger(__name__)
+        logger.info("Docker auto-setup enabled, using Docker container settings")
+        host = "localhost"
+        port = docker_config.port
+        database = docker_config.database
+        username = docker_config.username
+        password = docker_config.password
 
     # Validate required PostgreSQL configuration
     if not host:
@@ -85,8 +103,10 @@ def load_config() -> ServerConfig:
     log_level = os.environ.get("MCP_LOG_LEVEL", "INFO")
     debug = os.environ.get("MCP_DEBUG", "false").lower() == "true"
 
-    # Create ServerConfig with the loaded PostgresConfig
-    config = ServerConfig(log_level=log_level, debug=debug, postgres=postgres_config)
+    # Create ServerConfig with the loaded PostgresConfig and DockerConfig
+    config = ServerConfig(
+        log_level=log_level, debug=debug, postgres=postgres_config, docker=docker_config
+    )
 
     return config
 

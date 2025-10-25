@@ -16,7 +16,7 @@
    - ツール登録と実行管理 (main.py)
    - リソース管理 (resources.py)
 
-2. **データベース接続層** (実装中)
+2. **データベース接続層** (実装済み)
    - 接続プール管理 (database.py)
    - クエリ実行エンジン (database.py)
    - トランザクション管理 (database.py)
@@ -29,6 +29,9 @@
 4. **ツールシステム** (実装済み)
    - CRUDツール (tools/crud_tools.py)
    - スキーマツール (tools/schema_tools.py)
+   - テーブル管理ツール (tools/table_tools.py)
+   - トランザクションツール (tools/transaction_tools.py)
+   - MCP Samplingツール (tools/sampling_tools.py, tools/sampling_integration.py)
    - ツールハンドラー (tools/ディレクトリ)
 
 ## 主要技術的決定
@@ -120,9 +123,12 @@ class QueryExecutor:
 MCP Server Core (main.py)
     │
     ├── Tool Registry (main.py)
-    │   ├── Query Tools (tools/crud_tools.py)
+    │   ├── CRUD Tools (tools/crud_tools.py)
     │   ├── Schema Tools (tools/schema_tools.py)
-    │   └── Data Tools (tools/crud_tools.py)
+    │   ├── Table Tools (tools/table_tools.py)
+    │   ├── Transaction Tools (tools/transaction_tools.py)
+    │   ├── Sampling Tools (tools/sampling_tools.py)
+    │   └── Sampling Integration (tools/sampling_integration.py)
     │
     ├── Connection Manager (database.py)
     │   ├── Pool Factory (database.py)

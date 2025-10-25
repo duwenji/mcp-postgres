@@ -6,7 +6,7 @@ for advanced data analysis and quality improvement.
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Callable, Coroutine
+from typing import Any, Dict, List, Callable, Coroutine
 from mcp import Tool
 
 from ..database import DatabaseManager, DatabaseError
@@ -154,7 +154,7 @@ async def handle_get_multiple_table_schemas(
                 schemas[table_name] = results
             except Exception as e:
                 logger.warning(f"Failed to get schema for table {table_name}: {e}")
-                schemas[table_name] = {"error": str(e)}
+                schemas[table_name] = [{"error": str(e)}]
 
         # Get table relationships
         relationships = await _analyze_relationships(table_names, db_manager)
@@ -167,7 +167,16 @@ async def handle_get_multiple_table_schemas(
             "schemas": schemas,
             "relationships": relationships,
             "total_tables": len(table_names),
-            "successful_tables": len([s for s in schemas.values() if "error" not in s]),
+            "successful_tables": len(
+                [
+                    s
+                    for s in schemas.values()
+                    if isinstance(s, list)
+                    and not any(
+                        isinstance(item, dict) and "error" in item for item in s
+                    )
+                ]
+            ),
         }
 
     except DatabaseError as e:
@@ -205,11 +214,9 @@ async def handle_analyze_table_relationships(table_names: List[str]) -> Dict[str
 
 
 async def handle_generate_schema_overview(
-    include_tables: List[str] = None,
+    include_tables: List[str] = [],
 ) -> Dict[str, Any]:
     """Handle generate_schema_overview tool execution"""
-    if include_tables is None:
-        include_tables = []
 
     try:
         config = load_config()
@@ -231,10 +238,10 @@ async def handle_generate_schema_overview(
 
         # Get database statistics
         stats_query = """
-        SELECT 
+        SELECT
             COUNT(*) as total_tables,
             SUM(pg_relation_size(schemaname||'.'||tablename)) as total_size_bytes
-        FROM pg_tables 
+        FROM pg_tables
         WHERE schemaname = 'public'
         """
         stats_result = db_manager.connection.execute_query(stats_query)
@@ -330,7 +337,7 @@ async def _analyze_relationships(
     table_names: List[str], db_manager: DatabaseManager
 ) -> Dict[str, Any]:
     """Analyze relationships between tables"""
-    relationships = {
+    relationships: Dict[str, Any] = {
         "foreign_keys": [],
         "potential_relationships": [],
         "data_dependencies": [],
@@ -340,35 +347,39 @@ async def _analyze_relationships(
         # Analyze foreign key relationships
         fk_query = """
         SELECT
-            tc.table_schema, 
-            tc.table_name, 
-            kcu.column_name, 
+            tc.table_schema,
+            tc.table_name,
+            kcu.column_name,
             ccu.table_schema AS foreign_table_schema,
             ccu.table_name AS foreign_table_name,
-            ccu.column_name AS foreign_column_name 
-        FROM information_schema.table_constraints AS tc 
+            ccu.column_name AS foreign_column_name
+        FROM information_schema.table_constraints AS tc
         JOIN information_schema.key_column_usage AS kcu
             ON tc.constraint_name = kcu.constraint_name
-            AND tc.table_schema = kcu.table_schema 
+            AND tc.table_schema = kcu.table_schema
         JOIN information_schema.constraint_column_usage AS ccu
             ON ccu.constraint_name = tc.constraint_name
             AND ccu.table_schema = tc.table_schema
-        WHERE tc.constraint_type = 'FOREIGN KEY' 
+        WHERE tc.constraint_type = 'FOREIGN KEY'
             AND tc.table_name = ANY(%s)
         """
 
-        fk_results = db_manager.connection.execute_query(fk_query, (table_names,))
+        fk_results = db_manager.connection.execute_query(
+            fk_query, {"table_names": table_names}
+        )
         relationships["foreign_keys"] = fk_results
 
         # Analyze potential relationships based on column names
         for table_name in table_names:
             # Get column names for potential relationship analysis
             column_query = """
-            SELECT column_name, data_type 
-            FROM information_schema.columns 
+            SELECT column_name, data_type
+            FROM information_schema.columns
             WHERE table_schema = 'public' AND table_name = %s
             """
-            columns = db_manager.connection.execute_query(column_query, (table_name,))
+            columns = db_manager.connection.execute_query(
+                column_query, {"table_name": table_name}
+            )
 
             # Simple heuristic: look for common naming patterns
             for column in columns:
