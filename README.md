@@ -40,6 +40,50 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. This s
 - `database://info`: Database metadata and version information
 - `database://schema/{table_name}`: Schema information for specific tables
 
+## Project Configuration (pyproject.toml)
+
+This project uses the `pyproject.toml` file for configuration management. This is the latest Python package management standard that provides the following features:
+
+### Main Configuration Sections
+
+**Project Basic Information:**
+- Package name: `mcp-postgres-duwenji`
+- Version: `1.2.1`
+- Required Python version: `>=3.10`
+
+**Dependency Management:**
+- **Required dependencies**: MCP protocol, PostgreSQL connection, configuration management, etc.
+- **Development dependencies**: Testing, linting, formatting tools, etc.
+
+**Build System:**
+- **uv build**: Fast package building and dependency resolution
+- **Entry point**: `mcp_postgres_duwenji` command to start the server
+
+**Development Tool Configuration:**
+- **Black**: Automatic code formatting (88 characters per line)
+- **Mypy**: Strict type checking
+- **Pytest**: Test framework
+- **Flake8**: Code quality checking
+
+### Practical Usage
+
+```bash
+# Install dependencies
+uv sync --group dev
+
+# Start server
+uv run mcp_postgres_duwenji
+
+# Run tests
+uv run pytest
+
+# Code formatting
+uv run black src/
+
+# Type checking
+uv run mypy src/
+```
+
 ## Quick Start
 
 ### Prerequisites

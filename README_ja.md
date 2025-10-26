@@ -40,6 +40,50 @@ PostgreSQLデータベース操作のためのModel Context Protocol（MCP）サ
 - `database://info`: データベースのメタデータとバージョン情報
 - `database://schema/{table_name}`: 特定のテーブルのスキーマ情報
 
+## プロジェクト設定 (pyproject.toml)
+
+このプロジェクトは `pyproject.toml` ファイルを使用して設定を管理しています。これはPythonの最新パッケージ管理標準で、以下の機能を提供します：
+
+### 主な設定セクション
+
+**プロジェクト基本情報:**
+- パッケージ名: `mcp-postgres-duwenji`
+- バージョン: `1.2.1`
+- 必要なPythonバージョン: `>=3.10`
+
+**依存関係管理:**
+- **必須依存関係**: MCPプロトコル、PostgreSQL接続、設定管理など
+- **開発依存関係**: テスト、リンティング、フォーマットツールなど
+
+**ビルドシステム:**
+- **uvビルド**: 高速なパッケージビルドと依存関係解決
+- **エントリーポイント**: `mcp_postgres_duwenji` コマンドでサーバー起動
+
+**開発ツール設定:**
+- **Black**: コード自動フォーマット（1行88文字）
+- **Mypy**: 厳格な型チェック
+- **Pytest**: テストフレームワーク
+- **Flake8**: コード品質チェック
+
+### 実際の使い方
+
+```bash
+# 依存関係のインストール
+uv sync --group dev
+
+# サーバー起動
+uv run mcp_postgres_duwenji
+
+# テスト実行
+uv run pytest
+
+# コードフォーマット
+uv run black src/
+
+# 型チェック
+uv run mypy src/
+```
+
 ## クイックスタート
 
 ### 前提条件
