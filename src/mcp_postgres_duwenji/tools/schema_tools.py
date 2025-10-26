@@ -109,9 +109,19 @@ async def handle_get_table_schema(
         ORDER BY ordinal_position
         """
 
-        results = db_manager.connection.execute_query(
-            query, {"schema": schema, "table_name": table_name}
-        )
+        logger.info(f"Executing table schema query for table: {table_name}")
+        try:
+            results = db_manager.connection.execute_query(
+                query, {"schema": schema, "table_name": table_name}
+            )
+            logger.info(
+                f"Query results type: {type(results)}, "
+                f"length: {len(results) if isinstance(results, list) else 'N/A'}, "
+                f"results: {results}"
+            )
+        except Exception as query_error:
+            logger.error(f"Query execution failed: {query_error}")
+            raise
 
         # Get table constraints
         constraints_query = """
@@ -128,19 +138,55 @@ async def handle_get_table_schema(
         ORDER BY tc.constraint_type, tc.constraint_name
         """
 
-        constraints = db_manager.connection.execute_query(
-            constraints_query, {"schema": schema, "table_name": table_name}
-        )
+        logger.info(f"Executing constraints query for table: {table_name}")
+        try:
+            constraints = db_manager.connection.execute_query(
+                constraints_query, {"schema": schema, "table_name": table_name}
+            )
+            logger.info(
+                f"Constraints results type: {type(constraints)}, "
+                f"length: {len(constraints) if isinstance(constraints, list) else 'N/A'}, "
+                f"results: {constraints}"
+            )
+        except Exception as constraints_error:
+            logger.error(f"Constraints query execution failed: {constraints_error}")
+            constraints = []
 
         # Disconnect from database
         db_manager.connection.disconnect()
+
+        # Ensure results are properly formatted as lists
+        columns_list = []
+        if isinstance(results, list):
+            columns_list = results
+        elif isinstance(results, dict):
+            columns_list = [results]
+        else:
+            columns_list = list(results) if hasattr(results, "__iter__") else []
+
+        constraints_list = []
+        if isinstance(constraints, list):
+            constraints_list = constraints
+        elif isinstance(constraints, dict):
+            constraints_list = [constraints]
+        else:
+            constraints_list = (
+                list(constraints) if hasattr(constraints, "__iter__") else []
+            )
+
+        logger.info(
+            f"Final columns_list type: {type(columns_list)}, length: {len(columns_list)}"
+        )
+        logger.info(
+            f"Final constraints_list type: {type(constraints_list)}, length: {len(constraints_list)}"
+        )
 
         return {
             "success": True,
             "table_name": table_name,
             "schema": schema,
-            "columns": results,
-            "constraints": constraints,
+            "columns": columns_list,
+            "constraints": constraints_list,
         }
 
     except DatabaseError as e:
