@@ -162,11 +162,12 @@ class DatabaseConnection:
 
 
 class DatabaseManager:
-    """High-level database operations manager"""
+    """High-level database operations manager with connection pooling support"""
 
     def __init__(self, config: PostgresConfig):
         self.config = config
         self.connection = DatabaseConnection(config)
+        self._is_connected = False
 
     def _validate_table_name(self, table_name: str) -> None:
         """Validate table name to prevent SQL injection"""
@@ -175,6 +176,18 @@ class DatabaseManager:
         # Allow only alphanumeric characters and underscores
         if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table_name):
             raise DatabaseError(f"Invalid table name: {table_name}")
+
+    def connect(self) -> None:
+        """Establish database connection if not already connected"""
+        if not self._is_connected:
+            self.connection.connect()
+            self._is_connected = True
+
+    def disconnect(self) -> None:
+        """Disconnect from database if connected"""
+        if self._is_connected:
+            self.connection.disconnect()
+            self._is_connected = False
 
     def create_entity(self, table_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -210,23 +223,39 @@ class DatabaseManager:
         table_name: str,
         conditions: Optional[Dict[str, Any]] = None,
         limit: int = 100,
+        offset: int = 0,
+        order_by: Optional[str] = None,
+        order_direction: str = "ASC",
+        aggregate: Optional[str] = None,
+        group_by: Optional[str] = None,
     ) -> Dict[str, Any]:
         """
-        Read entities from the specified table with optional conditions
+        Read entities from the specified table with optional conditions and advanced features
 
         Args:
             table_name: Name of the table
             conditions: Dictionary of WHERE conditions
             limit: Maximum number of rows to return
+            offset: Number of rows to skip (for pagination)
+            order_by: Column name to order by
+            order_direction: Order direction (ASC or DESC)
+            aggregate: Aggregate function (e.g., COUNT, SUM, AVG, MAX, MIN)
+            group_by: Column name to group by
 
         Returns:
             Dictionary with query results
         """
         self._validate_table_name(table_name)
 
-        query = f"SELECT * FROM {table_name}"  # nosec
+        # Build SELECT clause
+        if aggregate:
+            query = f"SELECT {aggregate} FROM {table_name}"  # nosec
+        else:
+            query = f"SELECT * FROM {table_name}"  # nosec
+
         params = {}
 
+        # Build WHERE clause
         if conditions:
             where_clauses = []
             for key, value in conditions.items():
@@ -234,7 +263,21 @@ class DatabaseManager:
                 params[key] = value
             query += " WHERE " + " AND ".join(where_clauses)
 
-        query += f" LIMIT {limit}"
+        # Build GROUP BY clause
+        if group_by:
+            query += f" GROUP BY {group_by}"
+
+        # Build ORDER BY clause
+        if order_by:
+            if order_direction.upper() not in ["ASC", "DESC"]:
+                order_direction = "ASC"
+            query += f" ORDER BY {order_by} {order_direction}"
+
+        # Build LIMIT and OFFSET clauses
+        if limit > 0:
+            query += f" LIMIT {limit}"
+        if offset > 0:
+            query += f" OFFSET {offset}"
 
         try:
             results = self.connection.execute_query(query, params)
@@ -318,6 +361,132 @@ class DatabaseManager:
         try:
             results = self.connection.execute_query(query, params)
             return {"success": True, "deleted": results, "affected_rows": len(results)}
+        except DatabaseError as e:
+            return {"success": False, "error": str(e)}
+
+    def batch_create_entities(
+        self, table_name: str, data_list: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Create multiple entities in a single transaction
+
+        Args:
+            table_name: Name of the table
+            data_list: List of dictionaries containing column names and values
+
+        Returns:
+            Dictionary with operation result
+        """
+        self._validate_table_name(table_name)
+
+        if not data_list:
+            raise DatabaseError("No data provided for batch creation")
+
+        if len(data_list) > 1000:
+            raise DatabaseError("Batch creation limited to 1000 entities per operation")
+
+        # Use the first entity to determine column structure
+        first_entity = data_list[0]
+        columns = ", ".join(first_entity.keys())
+        placeholders = ", ".join([f"%({key})s" for key in first_entity.keys()])
+
+        query = f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) RETURNING *"  # nosec
+
+        try:
+            created_entities = []
+            for data in data_list:
+                results = self.connection.execute_query(query, data)
+                if results:
+                    created_entities.append(results[0])
+
+            return {
+                "success": True,
+                "created": created_entities,
+                "count": len(created_entities),
+            }
+        except DatabaseError as e:
+            return {"success": False, "error": str(e)}
+
+    def batch_update_entities(
+        self,
+        table_name: str,
+        conditions_list: List[Dict[str, Any]],
+        updates_list: List[Dict[str, Any]],
+    ) -> Dict[str, Any]:
+        """
+        Update multiple entities with different conditions and updates
+
+        Args:
+            table_name: Name of the table
+            conditions_list: List of WHERE conditions for each entity
+            updates_list: List of updates for each entity
+
+        Returns:
+            Dictionary with operation result
+        """
+        self._validate_table_name(table_name)
+
+        if len(conditions_list) != len(updates_list):
+            raise DatabaseError(
+                "Conditions list and updates list must have the same length"
+            )
+
+        if len(conditions_list) > 100:
+            raise DatabaseError("Batch update limited to 100 entities per operation")
+
+        try:
+            updated_entities = []
+            total_affected = 0
+
+            for conditions, updates in zip(conditions_list, updates_list):
+                result = self.update_entity(table_name, conditions, updates)
+                if result["success"]:
+                    updated_entities.append(result["updated"])
+                    total_affected += result.get("affected_rows", 0)
+
+            return {
+                "success": True,
+                "updated": updated_entities,
+                "affected_rows": total_affected,
+                "count": len(updated_entities),
+            }
+        except DatabaseError as e:
+            return {"success": False, "error": str(e)}
+
+    def batch_delete_entities(
+        self, table_name: str, conditions_list: List[Dict[str, Any]]
+    ) -> Dict[str, Any]:
+        """
+        Delete multiple entities with different conditions
+
+        Args:
+            table_name: Name of the table
+            conditions_list: List of WHERE conditions for each entity
+
+        Returns:
+            Dictionary with operation result
+        """
+        self._validate_table_name(table_name)
+
+        if len(conditions_list) > 100:
+            raise DatabaseError("Batch delete limited to 100 entities per operation")
+
+        try:
+            deleted_entities = []
+            total_affected = 0
+
+            for conditions in conditions_list:
+                result = self.delete_entity(table_name, conditions)
+                if result["success"]:
+                    deleted_entities.extend(result["deleted"])
+                    total_affected += result.get("affected_rows", 0)
+
+            return {
+                "success": True,
+                "deleted": deleted_entities,
+                "affected_rows": total_affected,
+                "count": len(deleted_entities),
+            }
         except DatabaseError as e:
             return {"success": False, "error": str(e)}
 
