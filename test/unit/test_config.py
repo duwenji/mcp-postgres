@@ -157,6 +157,43 @@ class TestLoadConfig:
             assert config.log_level == "WARNING"
             assert config.debug is True
 
+    @patch("dotenv.load_dotenv")
+    def test_load_config_with_docker_enabled(self, mock_load_dotenv):
+        """Test loading configuration when Docker auto-setup is enabled"""
+        with patch.dict(
+            os.environ,
+            {
+                "MCP_DOCKER_AUTO_SETUP": "true",
+                "MCP_DOCKER_PORT": "5434",
+                "MCP_DOCKER_DATABASE": "docker-db",
+                "MCP_DOCKER_USERNAME": "docker-user",
+                "MCP_DOCKER_PASSWORD": "docker-pass",
+                "POSTGRES_HOST": "should-be-ignored",
+                "POSTGRES_DB": "should-be-ignored",
+                "POSTGRES_USER": "should-be-ignored",
+                "POSTGRES_PASSWORD": "should-be-ignored",
+                "POSTGRES_SSL_MODE": "require",
+                "POSTGRES_POOL_SIZE": "15",
+                "POSTGRES_MAX_OVERFLOW": "25",
+                "POSTGRES_CONNECT_TIMEOUT": "45",
+            },
+            clear=True,
+        ):
+            config = load_config()
+
+            # Should use Docker settings instead of POSTGRES_* environment variables
+            assert config.postgres.host == "localhost"  # Always localhost for Docker
+            assert config.postgres.port == 5434
+            assert config.postgres.database == "docker-db"
+            assert config.postgres.username == "docker-user"
+            assert config.postgres.password == "docker-pass"
+            # SSL and pool settings should still come from environment
+            assert config.postgres.ssl_mode == "require"
+            assert config.postgres.pool_size == 15
+            assert config.postgres.max_overflow == 25
+            assert config.postgres.connect_timeout == 45
+            assert config.docker.enabled is True
+
 
 class TestConnectionString:
     """Test connection string generation"""

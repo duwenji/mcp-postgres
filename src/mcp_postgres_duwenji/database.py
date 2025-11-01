@@ -16,8 +16,8 @@ from .config import PostgresConfig, get_connection_string
 logger = logging.getLogger(__name__)
 
 
-def convert_dates_for_json(obj: Any) -> Any:
-    """Convert date/datetime objects to ISO format strings for JSON serialization"""
+def convert_for_json_serialization(obj: Any) -> Any:
+    """Convert Python objects to JSON serializable types"""
     if isinstance(obj, (datetime.date, datetime.datetime)):
         return obj.isoformat()
     elif isinstance(obj, datetime.time):
@@ -27,9 +27,52 @@ def convert_dates_for_json(obj: Any) -> Any:
     elif isinstance(obj, uuid.UUID):
         return str(obj)
     elif isinstance(obj, dict):
-        return {k: convert_dates_for_json(v) for k, v in obj.items()}
+        return {k: convert_for_json_serialization(v) for k, v in obj.items()}
     elif isinstance(obj, list):
-        return [convert_dates_for_json(item) for item in obj]
+        return [convert_for_json_serialization(item) for item in obj]
+    return obj
+
+
+def convert_for_database(obj: Any) -> Any:
+    """
+    Convert Python objects to PostgreSQL compatible types
+
+    Args:
+        obj: Python object to convert
+
+    Returns:
+        PostgreSQL compatible value
+    """
+    if isinstance(obj, (datetime.date, datetime.datetime)):
+        return obj
+    elif isinstance(obj, datetime.time):
+        return obj
+    elif isinstance(obj, decimal.Decimal):
+        return obj
+    elif isinstance(obj, uuid.UUID):
+        return obj
+    elif isinstance(obj, dict):
+        # Convert dict to JSON string for PostgreSQL JSON/JSONB types
+        import json
+
+        return json.dumps(obj)
+    elif isinstance(obj, list):
+        # Convert list to JSON string for PostgreSQL array types
+        import json
+
+        return json.dumps(obj)
+    elif isinstance(obj, str):
+        # Check if string is a valid ISO date/datetime format
+        try:
+            # Try to parse as datetime
+            return datetime.datetime.fromisoformat(obj.replace("Z", "+00:00"))
+        except (ValueError, AttributeError):
+            try:
+                # Try to parse as date
+                return datetime.date.fromisoformat(obj)
+            except (ValueError, AttributeError):
+                # Return as-is if not a date
+                return obj
     return obj
 
 
@@ -91,7 +134,7 @@ class DatabaseConnection:
                 if query.strip().upper().startswith("SELECT"):
                     results = cursor.fetchall()
                     converted_results = [
-                        convert_dates_for_json(dict(row)) for row in results
+                        convert_for_json_serialization(dict(row)) for row in results
                     ]
                     return converted_results
                 elif (
@@ -102,7 +145,7 @@ class DatabaseConnection:
                     results = cursor.fetchall()
                     self._connection.commit()
                     converted_results = [
-                        convert_dates_for_json(dict(row)) for row in results
+                        convert_for_json_serialization(dict(row)) for row in results
                     ]
                     return converted_results
                 elif (
@@ -113,7 +156,7 @@ class DatabaseConnection:
                     results = cursor.fetchall()
                     self._connection.commit()
                     converted_results = [
-                        convert_dates_for_json(dict(row)) for row in results
+                        convert_for_json_serialization(dict(row)) for row in results
                     ]
                     return converted_results
                 elif (
@@ -124,7 +167,7 @@ class DatabaseConnection:
                     results = cursor.fetchall()
                     self._connection.commit()
                     converted_results = [
-                        convert_dates_for_json(dict(row)) for row in results
+                        convert_for_json_serialization(dict(row)) for row in results
                     ]
                     return converted_results
                 else:
@@ -205,15 +248,18 @@ class DatabaseManager:
         if not data:
             raise DatabaseError("No data provided for creation")
 
-        columns = ", ".join(data.keys())
-        placeholders = ", ".join([f"%({key})s" for key in data.keys()])
+        # Convert data for database compatibility
+        converted_data = {k: convert_for_database(v) for k, v in data.items()}
+
+        columns = ", ".join(converted_data.keys())
+        placeholders = ", ".join([f"%({key})s" for key in converted_data.keys()])
         query = (
             f"INSERT INTO {table_name} ({columns}) VALUES ({placeholders}) "
             "RETURNING *"  # nosec
         )
 
         try:
-            results = self.connection.execute_query(query, data)
+            results = self.connection.execute_query(query, converted_data)
             return {"success": True, "created": results[0] if results else {}}
         except DatabaseError as e:
             return {"success": False, "error": str(e)}
@@ -260,7 +306,7 @@ class DatabaseManager:
             where_clauses = []
             for key, value in conditions.items():
                 where_clauses.append(f"{key} = %({key})s")
-                params[key] = value
+                params[key] = convert_for_database(value)
             query += " WHERE " + " AND ".join(where_clauses)
 
         # Build GROUP BY clause
@@ -307,14 +353,16 @@ class DatabaseManager:
         set_clauses = []
         params = {}
 
+        # Convert updates for database compatibility
         for key, value in updates.items():
             set_clauses.append(f"{key} = %(update_{key})s")
-            params[f"update_{key}"] = value
+            params[f"update_{key}"] = convert_for_database(value)
 
+        # Convert conditions for database compatibility
         where_clauses = []
         for key, value in conditions.items():
             where_clauses.append(f"{key} = %(condition_{key})s")
-            params[f"condition_{key}"] = value
+            params[f"condition_{key}"] = convert_for_database(value)
 
         query = (
             f"UPDATE {table_name} SET {', '.join(set_clauses)} "
@@ -349,9 +397,10 @@ class DatabaseManager:
         where_clauses = []
         params = {}
 
+        # Convert conditions for database compatibility
         for key, value in conditions.items():
             where_clauses.append(f"{key} = %({key})s")
-            params[key] = value
+            params[key] = convert_for_database(value)
 
         query = (
             f"DELETE FROM {table_name} WHERE {' AND '.join(where_clauses)} "
@@ -395,7 +444,9 @@ class DatabaseManager:
         try:
             created_entities = []
             for data in data_list:
-                results = self.connection.execute_query(query, data)
+                # Convert data for database compatibility
+                converted_data = {k: convert_for_database(v) for k, v in data.items()}
+                results = self.connection.execute_query(query, converted_data)
                 if results:
                     created_entities.append(results[0])
 

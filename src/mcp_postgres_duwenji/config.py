@@ -57,26 +57,31 @@ def load_config() -> ServerConfig:
     # Load Docker configuration first
     docker_config = load_docker_config()
 
-    # Load PostgreSQL configuration from environment variables
-    host = os.environ.get("POSTGRES_HOST", "localhost")
-    port = int(os.environ.get("POSTGRES_PORT", "5432"))
-    database = os.environ.get("POSTGRES_DB", "postgres")
-    username = os.environ.get("POSTGRES_USER", "postgres")
-    password = os.environ.get("POSTGRES_PASSWORD", "")
-    ssl_mode = os.environ.get("POSTGRES_SSL_MODE", "prefer")
-    pool_size = int(os.environ.get("POSTGRES_POOL_SIZE", "5"))
-    max_overflow = int(os.environ.get("POSTGRES_MAX_OVERFLOW", "10"))
-    connect_timeout = int(os.environ.get("POSTGRES_CONNECT_TIMEOUT", "30"))
-
-    # If Docker auto-setup is enabled, use Docker container settings
+    # If Docker auto-setup is enabled, use Docker container settings directly
     if docker_config.enabled:
         logger = logging.getLogger(__name__)
         logger.info("Docker auto-setup enabled, using Docker container settings")
+
         host = "localhost"
         port = docker_config.port
         database = docker_config.database
         username = docker_config.username
         password = docker_config.password
+        ssl_mode = os.environ.get("POSTGRES_SSL_MODE", "prefer")
+        pool_size = int(os.environ.get("POSTGRES_POOL_SIZE", "5"))
+        max_overflow = int(os.environ.get("POSTGRES_MAX_OVERFLOW", "10"))
+        connect_timeout = int(os.environ.get("POSTGRES_CONNECT_TIMEOUT", "30"))
+    else:
+        # Load PostgreSQL configuration from environment variables
+        host = os.environ.get("POSTGRES_HOST", "localhost")
+        port = int(os.environ.get("POSTGRES_PORT", "5432"))
+        database = os.environ.get("POSTGRES_DB", "postgres")
+        username = os.environ.get("POSTGRES_USER", "postgres")
+        password = os.environ.get("POSTGRES_PASSWORD", "")
+        ssl_mode = os.environ.get("POSTGRES_SSL_MODE", "prefer")
+        pool_size = int(os.environ.get("POSTGRES_POOL_SIZE", "5"))
+        max_overflow = int(os.environ.get("POSTGRES_MAX_OVERFLOW", "10"))
+        connect_timeout = int(os.environ.get("POSTGRES_CONNECT_TIMEOUT", "30"))
 
     # Validate required PostgreSQL configuration
     if not host:
