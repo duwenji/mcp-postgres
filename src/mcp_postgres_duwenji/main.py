@@ -32,7 +32,10 @@ from mcp import Resource, Tool
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    filename="mcp_postgres.log",  # ファイル名を指定
+    handlers=[
+        logging.FileHandler("mcp_postgres.log"),  # ファイルへのログ出力
+        logging.StreamHandler(sys.stderr),  # 標準エラー出力にも出力
+    ],
 )
 logger = logging.getLogger(__name__)
 
