@@ -114,7 +114,7 @@ class DockerManager:
                     logger.info(f"Pulling image: {self.config.image}")
                     client.images.pull(self.config.image)
 
-                # Create container
+                # Create container with pg_hba.conf configuration for external access
                 self.container = client.containers.run(
                     image=self.config.image,
                     name=self.config.container_name,
@@ -133,6 +133,17 @@ class DockerManager:
                     detach=True,
                     auto_remove=False,
                     restart_policy={"Name": "unless-stopped"},
+                    command=[
+                        "postgres",
+                        "-c",
+                        "listen_addresses=*",
+                        "-c",
+                        "log_statement=all",
+                        "-c",
+                        "log_connections=on",
+                        "-c",
+                        "log_disconnections=on",
+                    ],
                 )
 
             # Wait for PostgreSQL to be ready

@@ -193,6 +193,34 @@ class DatabaseResourceManager:
             logger.error(f"Error in get_database_info_resource: {e}")
             return f"Error retrieving database information: {str(e)}"
 
+    async def get_connection_info_resource(self) -> str:
+        """Get database connection information as JSON resource content"""
+        try:
+            import json
+
+            # Get connection configuration
+            config = self.config.postgres
+
+            # Create connection info dictionary
+            connection_info = {
+                "host": config.host,
+                "port": config.port,
+                "database": config.database,
+                "username": config.username,
+                "password": config.password,
+                "ssl_mode": config.ssl_mode,
+                "pool_size": config.pool_size,
+                "max_overflow": config.max_overflow,
+                "connect_timeout": config.connect_timeout,
+            }
+
+            # Return as formatted JSON
+            return json.dumps(connection_info, indent=2, ensure_ascii=False)
+
+        except Exception as e:
+            logger.error(f"Error in get_connection_info_resource: {e}")
+            return f"Error retrieving connection information: {str(e)}"
+
 
 # Resource definitions
 database_tables_resource = Resource(
@@ -209,12 +237,20 @@ database_info_resource = Resource(
     mimeType="text/markdown",
 )
 
+database_connection_resource = Resource(
+    uri="database://connection",  # type: ignore
+    name="Database Connection Info",
+    description="Database connection parameters (host, port, database, username, password, etc.)",
+    mimeType="application/json",
+)
+
 
 def get_database_resources() -> List[Resource]:
     """Get all database resources"""
     return [
         database_tables_resource,
         database_info_resource,
+        database_connection_resource,
     ]
 
 
@@ -225,6 +261,7 @@ def get_resource_handlers() -> Dict[str, Callable[[], Coroutine[Any, Any, str]]]
     return {
         "database://tables": resource_manager.get_tables_resource,
         "database://info": resource_manager.get_database_info_resource,
+        "database://connection": resource_manager.get_connection_info_resource,
     }
 
 

@@ -38,6 +38,7 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. This s
 ### Database Resources
 - `database://tables`: List of all tables in the database
 - `database://info`: Database metadata and version information
+- `database://connection`: Database connection parameters (host, port, database, username, password, etc.)
 - `database://schema/{table_name}`: Schema information for specific tables
 
 ## Project Configuration (pyproject.toml)
@@ -158,9 +159,19 @@ uv run mypy src/
    - Use the specified Docker image (postgres:16)
    - Create a persistent data volume for data storage
    - Set up the database with the specified credentials
+   - **Enable external access** (listen on all interfaces)
    - Enable debug logging for troubleshooting
 
    For detailed Docker setup instructions, see [Docker Auto Setup Guide](docs/docker-auto-setup-guide.md).
+
+### External Program Access
+
+When using Docker auto-setup, the PostgreSQL container is configured to allow external connections:
+- **Listen address**: `*` (all interfaces)
+- **Port**: Configurable via `MCP_DOCKER_PORT` (default: 5432)
+- **Authentication**: Password-based authentication
+
+External Python programs can use the connection information from the `database://connection` resource to connect directly to the PostgreSQL database.
 
 
 
