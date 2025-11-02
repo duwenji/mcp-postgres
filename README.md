@@ -122,6 +122,46 @@ uv run mypy src/
    }
    ```
 
+   **Docker Automatic Setup Configuration**:
+
+   For automatic PostgreSQL Docker container setup, use the following configuration:
+
+   ```json
+   {
+     "mcpServers": {
+       "postgres-mcp": {
+         "disabled": false,
+         "timeout": 60,
+         "type": "stdio",
+         "command": "uvx",
+         "args": ["mcp-postgres-duwenji"],
+         "env": {
+           "MCP_DOCKER_AUTO_SETUP": "true",
+           "MCP_DOCKER_IMAGE": "postgres:16",
+           "MCP_DOCKER_CONTAINER_NAME": "mcp-postgres-auto",
+           "MCP_DOCKER_PORT": "5432",
+           "MCP_DOCKER_DATA_VOLUME": "mcp_postgres_data",
+           "MCP_DOCKER_PASSWORD": "postgres",
+           "MCP_DOCKER_DATABASE": "mcp-postgres-db",
+           "MCP_DOCKER_USERNAME": "postgres",
+           "MCP_DOCKER_MAX_WAIT_TIME": "30",
+           "MCP_LOG_LEVEL": "INFO",
+           "MCP_DEBUG": "true"
+         }
+       }
+     }
+   }
+   ```
+
+   This configuration will automatically:
+   - Start a PostgreSQL Docker container when the MCP server starts
+   - Use the specified Docker image (postgres:16)
+   - Create a persistent data volume for data storage
+   - Set up the database with the specified credentials
+   - Enable debug logging for troubleshooting
+
+   For detailed Docker setup instructions, see [Docker Auto Setup Guide](docs/docker-auto-setup-guide.md).
+
 
 
 ### Usage Examples
