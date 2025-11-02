@@ -1,6 +1,6 @@
 [project]
 name = "mcp-postgres-duwenji"
-version = "1.2.6"
+version = "1.2.7"
 description = "MCP server for PostgreSQL database operations"
 authors = [
     { name = "mcp-postgres" },
@@ -34,7 +34,7 @@ dev = [
 ]
 
 [project.scripts]
-mcp_postgres_duwenji = "mcp_postgres_duwenji.main:cli_main"
+mcp-postgres-duwenji = "mcp_postgres_duwenji.main:cli_main"
 
 [build-system]
 requires = ["uv_build >= 0.9.2, <0.10.0"]
