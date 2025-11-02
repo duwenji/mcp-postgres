@@ -167,19 +167,21 @@ async def main() -> None:
     @server.read_resource()
     async def handle_read_resource(uri: str) -> str:
         """Read resource content"""
-        logger.info(f"Reading resource: {uri}")
+        # Convert uri to string if it's not already
+        uri_str = str(uri)
+        logger.info(f"Reading resource: {uri_str}")
 
         # Handle static resources
-        if uri in resource_handlers:
-            handler = resource_handlers[uri]
+        if uri_str in resource_handlers:
+            handler = resource_handlers[uri_str]
             return await handler()
 
         # Handle dynamic table schema resources
-        if uri.startswith("database://schema/"):
-            table_name = uri.replace("database://schema/", "")
+        if uri_str.startswith("database://schema/"):
+            table_name = uri_str.replace("database://schema/", "")
             return await table_schema_handler(table_name, "public")
 
-        return f"Resource {uri} not found"
+        return f"Resource {uri_str} not found"
 
     # Start the server
     logger.info("Starting PostgreSQL MCP Server...")
