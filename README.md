@@ -50,12 +50,7 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. Provid
 
 ### Installation
 
-1. **Install from PyPI**:
-   ```bash
-   uvx mcp-postgres-duwenji
-   ```
-
-2. **Configure your MCP client** (e.g., Claude Desktop):
+1. **Configure your MCP client** (e.g., Claude Desktop):
    Add the server configuration to your MCP client settings using `uvx`:
 
    **Claude Desktop Configuration Example**:
@@ -263,7 +258,6 @@ mcp-postgres/
 ├── src/mcp_postgres_duwenji/     # Main package
 ├── test/                         # Testing
 ├── docs/                         # Documentation
-├── examples/                     # Configuration examples
 ├── scripts/                      # Utility scripts
 ├── memory-bank/                  # Project memory bank
 ├── pyproject.toml                # Project configuration

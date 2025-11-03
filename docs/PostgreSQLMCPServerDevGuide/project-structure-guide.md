@@ -18,12 +18,10 @@ mcp-postgres-duwenji/
 │           ├── crud_tools.py    # CRUD操作ツール
 │           └── schema_tools.py  # スキーマ情報ツール
 ├── docs/                        # ドキュメント
-├── examples/                    # 設定例
 ├── test/                        # テストファイル
 ├── scripts/                     # ユーティリティスクリプト
 ├── pyproject.toml              # プロジェクト設定
 ├── README.md                   # プロジェクト説明
-├── README_ja.md               # 日本語説明
 ├── CHANGELOG.md               # 変更履歴
 ├── LICENSE                    # ライセンス
 └── .gitignore                 # Git除外設定
