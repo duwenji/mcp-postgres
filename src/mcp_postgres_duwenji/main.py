@@ -220,19 +220,40 @@ class ProtocolLoggingReceiveStream:
 
     async def __aenter__(self) -> Any:
         """非同期コンテキストマネージャーのエントリーポイント"""
-        if hasattr(self.original_stream, "__aenter__"):
-            return await self.original_stream.__aenter__()
+        # 常にselfを返す - これが非同期コンテキストマネージャーの正しい実装
+        try:
+            if hasattr(self.original_stream, "__aenter__"):
+                await self.original_stream.__aenter__()
+        except Exception as e:
+            # 元のストリームのエントリーポイントでエラーが発生した場合
+            if protocol_logger:
+                protocol_logger.error(f"Error in original stream __aenter__: {e}")
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
         """非同期コンテキストマネージャーの終了ポイント"""
-        if hasattr(self.original_stream, "__aexit__"):
-            return await self.original_stream.__aexit__(exc_type, exc_val, exc_tb)
+        try:
+            if hasattr(self.original_stream, "__aexit__"):
+                return await self.original_stream.__aexit__(exc_type, exc_val, exc_tb)
+        except Exception as e:
+            # 元のストリームの終了ポイントでエラーが発生した場合
+            if protocol_logger:
+                protocol_logger.error(f"Error in original stream __aexit__: {e}")
         return False
 
     def __getattr__(self, name: str) -> Any:
         """他のメソッドは元のストリームに委譲"""
-        return getattr(self.original_stream, name)
+        try:
+            return getattr(self.original_stream, name)
+        except AttributeError:
+            # 元のストリームにメソッドがない場合はAttributeErrorをそのまま送出
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            )
+
+    def __aiter__(self) -> Any:
+        """非同期イテレーターをサポート"""
+        return self.original_stream.__aiter__()
 
 
 class ProtocolLoggingSendStream:
@@ -297,19 +318,36 @@ class ProtocolLoggingSendStream:
 
     async def __aenter__(self) -> Any:
         """非同期コンテキストマネージャーのエントリーポイント"""
-        if hasattr(self.original_stream, "__aenter__"):
-            return await self.original_stream.__aenter__()
+        # 常にselfを返す - これが非同期コンテキストマネージャーの正しい実装
+        try:
+            if hasattr(self.original_stream, "__aenter__"):
+                await self.original_stream.__aenter__()
+        except Exception as e:
+            # 元のストリームのエントリーポイントでエラーが発生した場合
+            if protocol_logger:
+                protocol_logger.error(f"Error in original stream __aenter__: {e}")
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
         """非同期コンテキストマネージャーの終了ポイント"""
-        if hasattr(self.original_stream, "__aexit__"):
-            return await self.original_stream.__aexit__(exc_type, exc_val, exc_tb)
+        try:
+            if hasattr(self.original_stream, "__aexit__"):
+                return await self.original_stream.__aexit__(exc_type, exc_val, exc_tb)
+        except Exception as e:
+            # 元のストリームの終了ポイントでエラーが発生した場合
+            if protocol_logger:
+                protocol_logger.error(f"Error in original stream __aexit__: {e}")
         return False
 
     def __getattr__(self, name: str) -> Any:
         """他のメソッドは元のストリームに委譲"""
-        return getattr(self.original_stream, name)
+        try:
+            return getattr(self.original_stream, name)
+        except AttributeError:
+            # 元のストリームにメソッドがない場合はAttributeErrorをそのまま送出
+            raise AttributeError(
+                f"'{type(self).__name__}' object has no attribute '{name}'"
+            )
 
 
 async def protocol_logging_server(
