@@ -180,6 +180,7 @@ class ProtocolLoggingStream:
                     f"READ_START - stream_type: {self.stream_type}, size: {size}"
                 )
 
+            # 元のストリームのreadメソッドを呼び出し
             data: bytes = await self.original_stream.read(size)
 
             if protocol_logger:
@@ -204,10 +205,12 @@ class ProtocolLoggingStream:
                         protocol_logger.error(f"Error logging request: {e}")
             return data
         except Exception as e:
-            # 元のストリームのエラーをそのまま伝播
+            # 詳細なエラー情報をログに記録
             if protocol_logger:
+                import traceback
+
                 protocol_logger.error(
-                    f"READ_ERROR - stream_type: {self.stream_type}, error: {e}"
+                    f"READ_ERROR - stream_type: {self.stream_type}, error: {e}, traceback: {traceback.format_exc()}"
                 )
             raise e
 
@@ -235,6 +238,7 @@ class ProtocolLoggingStream:
                     if protocol_logger:
                         protocol_logger.error(f"Error logging response: {e}")
 
+            # 元のストリームのwriteメソッドを呼び出し
             await self.original_stream.write(data)
 
             if protocol_logger:
@@ -243,10 +247,12 @@ class ProtocolLoggingStream:
                 )
 
         except Exception as e:
-            # 元のストリームのエラーをそのまま伝播
+            # 詳細なエラー情報をログに記録
             if protocol_logger:
+                import traceback
+
                 protocol_logger.error(
-                    f"WRITE_ERROR - stream_type: {self.stream_type}, error: {e}"
+                    f"WRITE_ERROR - stream_type: {self.stream_type}, error: {e}, traceback: {traceback.format_exc()}"
                 )
             raise e
 
@@ -508,8 +514,18 @@ async def main() -> None:
 
     except Exception as e:
         if protocol_logger:
-            protocol_logger.error(f"SERVER_ERROR - Exception in main server loop: {e}")
+            import traceback
+
+            protocol_logger.error(
+                f"SERVER_ERROR - Exception in main server loop: {e}, traceback: {traceback.format_exc()}"
+            )
         logger.error(f"Server error: {e}")
+        import traceback
+
+        logger.error(f"Server error traceback: {traceback.format_exc()}")
+        # 詳細なエラー情報を標準エラー出力にも出力
+        print(f"Server error: {e}", file=sys.stderr)
+        print(f"Server error traceback: {traceback.format_exc()}", file=sys.stderr)
         raise
 
 
