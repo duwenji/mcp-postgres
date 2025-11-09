@@ -30,7 +30,9 @@ class ServerConfig(BaseModel):
     """MCP Server configuration"""
 
     log_level: str = Field(default="INFO", description="Logging level")
-    debug: bool = Field(default=False, description="Enable debug mode")
+    protocol_debug: bool = Field(
+        default=False, description="Enable protocol debug mode"
+    )
     log_dir: str = Field(default="", description="Log directory path")
 
     # PostgreSQL configuration
@@ -107,13 +109,13 @@ def load_config() -> ServerConfig:
 
     # Load server configuration
     log_level = os.environ.get("MCP_LOG_LEVEL", "INFO")
-    debug = os.environ.get("MCP_DEBUG", "false").lower() == "true"
+    protocol_debug = os.environ.get("MCP_PROTOCOL_DEBUG", "false").lower() == "true"
     log_dir = os.environ.get("MCP_LOG_DIR", "")
 
     # Create ServerConfig with the loaded PostgresConfig and DockerConfig
     config = ServerConfig(
         log_level=log_level,
-        debug=debug,
+        protocol_debug=protocol_debug,
         log_dir=log_dir,
         postgres=postgres_config,
         docker=docker_config,

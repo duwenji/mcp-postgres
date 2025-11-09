@@ -68,7 +68,7 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. Provid
            "POSTGRES_PASSWORD": "your_password",
            "POSTGRES_SSL_MODE": "prefer",
            "MCP_LOG_LEVEL": "INFO",
-           "MCP_DEBUG": "true",
+           "MCP_PROTOCOL_DEBUG": "true",
            "MCP_LOG_DIR": "C:\\Logs\\mcp-postgres"
          }
        }
@@ -100,7 +100,7 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. Provid
            "MCP_DOCKER_USERNAME": "postgres",
            "MCP_DOCKER_MAX_WAIT_TIME": "30",
            "MCP_LOG_LEVEL": "INFO",
-           "MCP_DEBUG": "true",
+           "MCP_PROTOCOL_DEBUG": "true",
            "MCP_LOG_DIR": "C:\\Logs\\mcp-postgres"
          }
        }
@@ -154,7 +154,7 @@ The PostgreSQL MCP Server supports the following environment variables for confi
 
 #### Logging and Debug Variables
 - `MCP_LOG_LEVEL`: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL, default: INFO)
-- `MCP_DEBUG`: Enable debug mode (true/false, default: false)
+- `MCP_PROTOCOL_DEBUG`: Enable MCP protocol debug logging (true/false, default: false)
 
 ### Environment Variable Usage Examples
 
@@ -183,7 +183,7 @@ MCP_DOCKER_MAX_WAIT_TIME=30
 
 # Logging
 MCP_LOG_LEVEL=INFO
-MCP_DEBUG=false
+MCP_PROTOCOL_DEBUG=false
 ```
 
 #### Using System Environment Variables

@@ -30,17 +30,23 @@ from .resources import (
 from mcp import Resource, Tool
 
 
-def setup_logging(log_dir: str = "") -> tuple[logging.Logger, logging.Logger]:
+def setup_logging(
+    log_level: str = "INFO", log_dir: str = ""
+) -> tuple[logging.Logger, logging.Logger]:
     """
-    Setup logging with custom directory
+    Setup logging with custom directory and log level
 
     Args:
+        log_level: Logging level (DEBUG, INFO, WARNING, ERROR, CRITICAL)
         log_dir: Custom log directory path. If empty, uses current directory.
 
     Returns:
         Tuple of (general logger, protocol logger)
     """
     import os
+
+    # ログレベルを数値に変換
+    numeric_level = getattr(logging, log_level.upper(), logging.INFO)
 
     # ログディレクトリが指定されている場合は使用
     if log_dir:
@@ -58,15 +64,15 @@ def setup_logging(log_dir: str = "") -> tuple[logging.Logger, logging.Logger]:
 
     # 基本ログ設定 - ファイルと標準出力の両方に出力
     logger = logging.getLogger(__name__)
-    logger.setLevel(logging.DEBUG)
+    logger.setLevel(numeric_level)
 
     # ファイルハンドラー
     file_handler = logging.FileHandler(general_log_path)
-    file_handler.setLevel(logging.DEBUG)
+    file_handler.setLevel(numeric_level)
 
-    # 標準出力ハンドラー（フォールバック用）
+    # 標準出力ハンドラー（環境変数のログレベルを反映）
     console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(logging.INFO)
+    console_handler.setLevel(numeric_level)
 
     # フォーマッター
     formatter = logging.Formatter(
@@ -82,7 +88,7 @@ def setup_logging(log_dir: str = "") -> tuple[logging.Logger, logging.Logger]:
 
     # プロトコルロガー設定
     protocol_logger = logging.getLogger("mcp_protocol")
-    protocol_logger.setLevel(logging.DEBUG)
+    protocol_logger.setLevel(numeric_level)
     protocol_handler = logging.FileHandler(protocol_log_path)
     protocol_handler.setFormatter(
         logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
@@ -485,17 +491,26 @@ async def protocol_logging_server(
     Returns:
         ラップされたストリームのタプル
     """
-    if protocol_logger:
-        protocol_logger.debug("PROTOCOL_LOGGING_SERVER - Starting stream wrapping")
+    # プロトコルデバッグモードが有効な場合のみロギングを有効化
+    if global_config and global_config.protocol_debug:
+        if protocol_logger:
+            protocol_logger.debug("PROTOCOL_LOGGING_SERVER - Starting stream wrapping")
 
-    # 入出力ストリームをラップ
-    wrapped_read_stream = ProtocolLoggingReceiveStream(read_stream)
-    wrapped_write_stream = ProtocolLoggingSendStream(write_stream)
+        # 入出力ストリームをラップ
+        wrapped_read_stream = ProtocolLoggingReceiveStream(read_stream)
+        wrapped_write_stream = ProtocolLoggingSendStream(write_stream)
 
-    if protocol_logger:
-        protocol_logger.debug("PROTOCOL_LOGGING_SERVER - Stream wrapping completed")
+        if protocol_logger:
+            protocol_logger.debug("PROTOCOL_LOGGING_SERVER - Stream wrapping completed")
 
-    return wrapped_read_stream, wrapped_write_stream
+        return wrapped_read_stream, wrapped_write_stream
+    else:
+        # プロトコルデバッグモードが無効な場合は元のストリームをそのまま返す
+        if protocol_logger:
+            protocol_logger.debug(
+                "PROTOCOL_LOGGING_SERVER - Protocol debug disabled, using original streams"
+            )
+        return read_stream, write_stream
 
 
 async def main() -> None:
@@ -505,10 +520,12 @@ async def main() -> None:
         global global_config
         global_config = load_config()
 
-        # ログ設定を再適用（カスタムディレクトリを反映）
+        # ログ設定を再適用（環境変数の設定を反映）
         global logger, protocol_logger
         try:
-            logger, protocol_logger = setup_logging(global_config.log_dir)
+            logger, protocol_logger = setup_logging(
+                log_level=global_config.log_level, log_dir=global_config.log_dir
+            )
             logger.info(f"Configuration loaded successfully. config={global_config}")
         except Exception as log_error:
             # ログ設定失敗時のフォールバック
@@ -594,13 +611,33 @@ async def main() -> None:
         if name in all_handlers:
             handler = all_handlers[name]
             try:
+                # プロトコルデバッグモード時の追加ログ
+                if global_config.protocol_debug:
+                    logger.debug(f"TOOL_DEBUG - Executing handler for: {name}")
+                    logger.debug(f"TOOL_DEBUG - Handler function: {handler.__name__}")
+
                 result = await handler(**arguments)
                 # 詳細な出力ログ（機密情報をマスク）
                 sanitized_result = sanitize_log_output(result)
                 logger.info(f"TOOL_OUTPUT - Tool: {name}, Result: {sanitized_result}")
+
+                # プロトコルデバッグモード時の追加ログ
+                if global_config.protocol_debug:
+                    logger.debug(f"TOOL_DEBUG - Raw result type: {type(result)}")
+                    logger.debug(
+                        f"TOOL_DEBUG - Raw result keys: {list(result.keys()) if isinstance(result, dict) else 'N/A'}"
+                    )
+
                 return result
             except Exception as e:
                 logger.error(f"TOOL_ERROR - Tool: {name}, Error: {e}")
+                # プロトコルデバッグモード時の詳細なエラー情報
+                if global_config.protocol_debug:
+                    import traceback
+
+                    logger.debug(
+                        f"TOOL_DEBUG - Error traceback: {traceback.format_exc()}"
+                    )
                 return {"success": False, "error": str(e)}
         else:
             logger.error(f"TOOL_UNKNOWN - Tool: {name}")
@@ -699,37 +736,19 @@ async def main() -> None:
 
     # Start the server
     logger.info("Starting PostgreSQL MCP Server...")
-    protocol_logger.info("MCP Protocol logging started")
 
     try:
         async with stdio_server() as (read_stream, write_stream):
-            if protocol_logger:
-                protocol_logger.debug(
-                    "STDIO_SERVER - stdio_server context entered successfully"
-                )
-
             # プロトコルロギングを有効化
             read_stream, write_stream = await protocol_logging_server(
                 read_stream, write_stream
             )
 
-            if protocol_logger:
-                protocol_logger.debug("SERVER_RUN - Starting server.run()")
-
             await server.run(
                 read_stream, write_stream, server.create_initialization_options()
             )
 
-            if protocol_logger:
-                protocol_logger.debug("SERVER_RUN - server.run() completed normally")
-
     except Exception as e:
-        if protocol_logger:
-            import traceback
-
-            protocol_logger.error(
-                f"SERVER_ERROR - Exception in main server loop: {e}, traceback: {traceback.format_exc()}"
-            )
         logger.error(f"Server error: {e}")
         import traceback
 

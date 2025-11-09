@@ -25,7 +25,9 @@
         "POSTGRES_PASSWORD": "mypassword",
         "POSTGRES_SSL_MODE": "prefer",
         "POSTGRES_POOL_SIZE": "5",
-        "POSTGRES_MAX_OVERFLOW": "10"
+        "POSTGRES_MAX_OVERFLOW": "10",
+        "MCP_LOG_LEVEL": "INFO",
+        "MCP_PROTOCOL_DEBUG": "false"
       }
     }
   }

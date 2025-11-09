@@ -71,17 +71,19 @@ class TestServerConfig:
         config = ServerConfig()
 
         assert config.log_level == "INFO"
-        assert config.debug is False
+        assert config.protocol_debug is False
         assert isinstance(config.postgres, PostgresConfig)
 
     def test_custom_values(self):
         """Test server configuration with custom values"""
         postgres_config = PostgresConfig(host="custom-host", database="custom_db")
 
-        config = ServerConfig(log_level="DEBUG", debug=True, postgres=postgres_config)
+        config = ServerConfig(
+            log_level="DEBUG", protocol_debug=True, postgres=postgres_config
+        )
 
         assert config.log_level == "DEBUG"
-        assert config.debug is True
+        assert config.protocol_debug is True
         assert config.postgres.host == "custom-host"
         assert config.postgres.database == "custom_db"
 
@@ -139,7 +141,7 @@ class TestLoadConfig:
                 "POSTGRES_MAX_OVERFLOW": "25",
                 "POSTGRES_CONNECT_TIMEOUT": "45",
                 "MCP_LOG_LEVEL": "WARNING",
-                "MCP_DEBUG": "true",
+                "MCP_PROTOCOL_DEBUG": "true",
             },
             clear=True,
         ):
@@ -155,7 +157,7 @@ class TestLoadConfig:
             assert config.postgres.max_overflow == 25
             assert config.postgres.connect_timeout == 45
             assert config.log_level == "WARNING"
-            assert config.debug is True
+            assert config.protocol_debug is True
 
     @patch("dotenv.load_dotenv")
     def test_load_config_with_docker_enabled(self, mock_load_dotenv):

@@ -1078,6 +1078,8 @@ $env:POSTGRES_PASSWORD="mypassword"
 $env:POSTGRES_SSL_MODE="prefer"
 $env:POSTGRES_POOL_SIZE=5
 $env:POSTGRES_MAX_OVERFLOW=10
+$env:MCP_LOG_LEVEL="INFO"
+$env:MCP_PROTOCOL_DEBUG="false"
 
 # または永続的な設定（管理者権限が必要な場合あり）
 [System.Environment]::SetEnvironmentVariable("POSTGRES_HOST", "localhost", "User")
@@ -1085,6 +1087,8 @@ $env:POSTGRES_MAX_OVERFLOW=10
 [System.Environment]::SetEnvironmentVariable("POSTGRES_DB", "mydatabase", "User")
 [System.Environment]::SetEnvironmentVariable("POSTGRES_USER", "myuser", "User")
 [System.Environment]::SetEnvironmentVariable("POSTGRES_PASSWORD", "mypassword", "User")
+[System.Environment]::SetEnvironmentVariable("MCP_LOG_LEVEL", "INFO", "User")
+[System.Environment]::SetEnvironmentVariable("MCP_PROTOCOL_DEBUG", "false", "User")
 ```
 
 **注意**: WindowsではPowerShellを使用することを推奨します。環境変数の設定後、新しいPowerShellセッションを開始してください。

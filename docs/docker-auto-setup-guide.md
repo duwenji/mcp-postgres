@@ -61,6 +61,10 @@ MCP_DOCKER_USERNAME=postgres
 
 # 起動タイムアウト設定
 MCP_DOCKER_MAX_WAIT_TIME=30
+
+# ロギング設定
+MCP_LOG_LEVEL=INFO
+MCP_PROTOCOL_DEBUG=false
 ```
 
 ## 動作フロー
