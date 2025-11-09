@@ -40,6 +40,44 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 
 
+def sanitize_log_output(result: Any) -> Any:
+    """
+    ログ出力用に機密情報をマスクする関数
+
+    Args:
+        result: ログ出力する結果データ
+
+    Returns:
+        機密情報がマスクされた結果データ
+    """
+    if isinstance(result, dict):
+        sanitized = result.copy()
+        # 機密情報を含む可能性のあるフィールドをマスク
+        sensitive_fields = ["password", "secret", "token", "key", "auth"]
+        for field in sensitive_fields:
+            if field in sanitized:
+                sanitized[field] = "***MASKED***"
+
+        # ネストされた辞書も再帰的に処理
+        for key, value in sanitized.items():
+            if isinstance(value, dict):
+                sanitized[key] = sanitize_log_output(value)
+            elif isinstance(value, list):
+                sanitized[key] = [
+                    sanitize_log_output(item) if isinstance(item, dict) else item
+                    for item in value
+                ]
+
+        return sanitized
+    elif isinstance(result, list):
+        return [
+            sanitize_log_output(item) if isinstance(item, dict) else item
+            for item in result
+        ]
+    else:
+        return result
+
+
 async def main() -> None:
     """Main entry point for the MCP server"""
     try:
@@ -109,26 +147,30 @@ async def main() -> None:
     @server.call_tool()
     async def handle_tool_call(name: str, arguments: dict) -> Dict[str, Any]:
         """Handle tool execution requests"""
-        logger.info(f"Tool call: {name} with arguments: {arguments}")
+        # 詳細な入力ログ
+        logger.info(f"TOOL_INPUT - Tool: {name}, Arguments: {arguments}")
 
         if name in all_handlers:
             handler = all_handlers[name]
             try:
                 result = await handler(**arguments)
-                logger.info(f"Tool {name} executed successfully")
+                # 詳細な出力ログ（機密情報をマスク）
+                sanitized_result = sanitize_log_output(result)
+                logger.info(f"TOOL_OUTPUT - Tool: {name}, Result: {sanitized_result}")
                 return result
             except Exception as e:
-                logger.error(f"Tool {name} execution failed: {e}")
+                logger.error(f"TOOL_ERROR - Tool: {name}, Error: {e}")
                 return {"success": False, "error": str(e)}
         else:
-            logger.error(f"Unknown tool: {name}")
+            logger.error(f"TOOL_UNKNOWN - Tool: {name}")
             return {"success": False, "error": f"Unknown tool: {name}"}
 
     # Register tools via list_tools handler
     @server.list_tools()
     async def handle_list_tools() -> List[Tool]:
         """List available tools"""
-        logger.info("Listing available tools")
+        tool_count = len(all_tools)
+        logger.info(f"TOOL_LIST - Listing {tool_count} available tools")
         return all_tools
 
     # Register resources
@@ -139,6 +181,7 @@ async def main() -> None:
     @server.list_resources()
     async def handle_list_resources() -> List[Resource]:
         """List available resources"""
+        logger.info("RESOURCE_LIST - Listing available resources")
         resources = database_resources.copy()
 
         # Add dynamic table schema resources
@@ -150,6 +193,8 @@ async def main() -> None:
             db_manager.connection.disconnect()
 
             if tables_result["success"]:
+                table_count = len(tables_result["tables"])
+                logger.info(f"RESOURCE_LIST - Found {table_count} tables in database")
                 for table_name in tables_result["tables"]:
                     resources.append(
                         Resource(
@@ -159,9 +204,15 @@ async def main() -> None:
                             mimeType="text/markdown",
                         )
                     )
+            else:
+                logger.warning(
+                    f"RESOURCE_LIST - Failed to get tables: {tables_result.get('error', 'Unknown error')}"
+                )
         except Exception as e:
-            logger.error(f"Error listing table resources: {e}")
+            logger.error(f"RESOURCE_LIST_ERROR - Error listing table resources: {e}")
 
+        total_resources = len(resources)
+        logger.info(f"RESOURCE_LIST - Total resources available: {total_resources}")
         return resources
 
     @server.read_resource()
@@ -169,18 +220,41 @@ async def main() -> None:
         """Read resource content"""
         # Convert uri to string if it's not already
         uri_str = str(uri)
-        logger.info(f"Reading resource: {uri_str}")
+        logger.info(f"RESOURCE_READ - Reading resource: {uri_str}")
 
         # Handle static resources
         if uri_str in resource_handlers:
+            logger.info(f"RESOURCE_READ - Handling static resource: {uri_str}")
             handler = resource_handlers[uri_str]
-            return await handler()
+            try:
+                content = await handler()
+                content_length = len(content) if content else 0
+                logger.info(
+                    f"RESOURCE_READ_SUCCESS - Resource: {uri_str}, Content length: {content_length}"
+                )
+                return content
+            except Exception as e:
+                logger.error(f"RESOURCE_READ_ERROR - Resource: {uri_str}, Error: {e}")
+                return f"Error reading resource {uri_str}: {e}"
 
         # Handle dynamic table schema resources
         if uri_str.startswith("database://schema/"):
             table_name = uri_str.replace("database://schema/", "")
-            return await table_schema_handler(table_name, "public")
+            logger.info(f"RESOURCE_READ - Handling table schema resource: {table_name}")
+            try:
+                content = await table_schema_handler(table_name, "public")
+                content_length = len(content) if content else 0
+                logger.info(
+                    f"RESOURCE_READ_SUCCESS - Table schema: {table_name}, Content length: {content_length}"
+                )
+                return content
+            except Exception as e:
+                logger.error(
+                    f"RESOURCE_READ_ERROR - Table schema: {table_name}, Error: {e}"
+                )
+                return f"Error reading table schema {table_name}: {e}"
 
+        logger.warning(f"RESOURCE_NOT_FOUND - Resource: {uri_str}")
         return f"Resource {uri_str} not found"
 
     # Start the server

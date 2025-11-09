@@ -215,6 +215,9 @@ batch_delete_entities = Tool(
 # Tool handlers
 async def handle_create_entity(table_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
     """Handle create entity tool execution"""
+    logger.info(
+        f"CRUD_TOOL - create_entity - Table: {table_name}, Data keys: {list(data.keys())}"
+    )
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
@@ -227,12 +230,20 @@ async def handle_create_entity(table_name: str, data: Dict[str, Any]) -> Dict[st
         # Disconnect from database
         db_manager.disconnect()
 
+        logger.info(
+            f"CRUD_TOOL_SUCCESS - create_entity - Table: {table_name}, Result: {result.get('success', False)}"
+        )
         return result
 
     except DatabaseError as e:
+        logger.error(
+            f"CRUD_TOOL_ERROR - create_entity - Table: {table_name}, DatabaseError: {e}"
+        )
         return {"success": False, "error": str(e)}
     except Exception as e:
-        logger.error(f"Unexpected error in create_entity: {e}")
+        logger.error(
+            f"CRUD_TOOL_ERROR - create_entity - Table: {table_name}, Unexpected error: {e}"
+        )
         return {"success": False, "error": f"Internal server error: {str(e)}"}
 
 
@@ -247,6 +258,9 @@ async def handle_read_entity(
     group_by: Optional[str] = None,
 ) -> Dict[str, Any]:
     """Handle read entity tool execution with advanced features"""
+    logger.info(
+        f"CRUD_TOOL - read_entity - Table: {table_name}, Conditions: {conditions}, Limit: {limit}, Offset: {offset}"
+    )
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
@@ -268,12 +282,21 @@ async def handle_read_entity(
         # Disconnect from database
         db_manager.disconnect()
 
+        row_count = len(result.get("entities", [])) if result.get("success") else 0
+        logger.info(
+            f"CRUD_TOOL_SUCCESS - read_entity - Table: {table_name}, Rows returned: {row_count}"
+        )
         return result
 
     except DatabaseError as e:
+        logger.error(
+            f"CRUD_TOOL_ERROR - read_entity - Table: {table_name}, DatabaseError: {e}"
+        )
         return {"success": False, "error": str(e)}
     except Exception as e:
-        logger.error(f"Unexpected error in read_entity: {e}")
+        logger.error(
+            f"CRUD_TOOL_ERROR - read_entity - Table: {table_name}, Unexpected error: {e}"
+        )
         return {"success": False, "error": f"Internal server error: {str(e)}"}
 
 
@@ -281,6 +304,10 @@ async def handle_update_entity(
     table_name: str, conditions: Dict[str, Any], updates: Dict[str, Any]
 ) -> Dict[str, Any]:
     """Handle update entity tool execution"""
+    logger.info(
+        f"CRUD_TOOL - update_entity - Table: {table_name}, "
+        f"Conditions: {conditions}, Updates keys: {list(updates.keys())}"
+    )
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
@@ -293,12 +320,20 @@ async def handle_update_entity(
         # Disconnect from database
         db_manager.disconnect()
 
+        logger.info(
+            f"CRUD_TOOL_SUCCESS - update_entity - Table: {table_name}, Result: {result.get('success', False)}"
+        )
         return result
 
     except DatabaseError as e:
+        logger.error(
+            f"CRUD_TOOL_ERROR - update_entity - Table: {table_name}, DatabaseError: {e}"
+        )
         return {"success": False, "error": str(e)}
     except Exception as e:
-        logger.error(f"Unexpected error in update_entity: {e}")
+        logger.error(
+            f"CRUD_TOOL_ERROR - update_entity - Table: {table_name}, Unexpected error: {e}"
+        )
         return {"success": False, "error": f"Internal server error: {str(e)}"}
 
 
@@ -306,6 +341,9 @@ async def handle_delete_entity(
     table_name: str, conditions: Dict[str, Any]
 ) -> Dict[str, Any]:
     """Handle delete entity tool execution"""
+    logger.info(
+        f"CRUD_TOOL - delete_entity - Table: {table_name}, Conditions: {conditions}"
+    )
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
@@ -318,12 +356,20 @@ async def handle_delete_entity(
         # Disconnect from database
         db_manager.disconnect()
 
+        logger.info(
+            f"CRUD_TOOL_SUCCESS - delete_entity - Table: {table_name}, Result: {result.get('success', False)}"
+        )
         return result
 
     except DatabaseError as e:
+        logger.error(
+            f"CRUD_TOOL_ERROR - delete_entity - Table: {table_name}, DatabaseError: {e}"
+        )
         return {"success": False, "error": str(e)}
     except Exception as e:
-        logger.error(f"Unexpected error in delete_entity: {e}")
+        logger.error(
+            f"CRUD_TOOL_ERROR - delete_entity - Table: {table_name}, Unexpected error: {e}"
+        )
         return {"success": False, "error": f"Internal server error: {str(e)}"}
 
 
@@ -332,6 +378,9 @@ async def handle_batch_create_entities(
     table_name: str, data_list: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     """Handle batch create entities tool execution"""
+    logger.info(
+        f"CRUD_TOOL - batch_create_entities - Table: {table_name}, Records: {len(data_list)}"
+    )
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
@@ -344,12 +393,20 @@ async def handle_batch_create_entities(
         # Disconnect from database
         db_manager.disconnect()
 
+        logger.info(
+            f"CRUD_TOOL_SUCCESS - batch_create_entities - Table: {table_name}, Result: {result.get('success', False)}"
+        )
         return result
 
     except DatabaseError as e:
+        logger.error(
+            f"CRUD_TOOL_ERROR - batch_create_entities - Table: {table_name}, DatabaseError: {e}"
+        )
         return {"success": False, "error": str(e)}
     except Exception as e:
-        logger.error(f"Unexpected error in batch_create_entities: {e}")
+        logger.error(
+            f"CRUD_TOOL_ERROR - batch_create_entities - Table: {table_name}, Unexpected error: {e}"
+        )
         return {"success": False, "error": f"Internal server error: {str(e)}"}
 
 
@@ -359,6 +416,9 @@ async def handle_batch_update_entities(
     updates_list: List[Dict[str, Any]],
 ) -> Dict[str, Any]:
     """Handle batch update entities tool execution"""
+    logger.info(
+        f"CRUD_TOOL - batch_update_entities - Table: {table_name}, Operations: {len(conditions_list)}"
+    )
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
@@ -373,12 +433,20 @@ async def handle_batch_update_entities(
         # Disconnect from database
         db_manager.disconnect()
 
+        logger.info(
+            f"CRUD_TOOL_SUCCESS - batch_update_entities - Table: {table_name}, Result: {result.get('success', False)}"
+        )
         return result
 
     except DatabaseError as e:
+        logger.error(
+            f"CRUD_TOOL_ERROR - batch_update_entities - Table: {table_name}, DatabaseError: {e}"
+        )
         return {"success": False, "error": str(e)}
     except Exception as e:
-        logger.error(f"Unexpected error in batch_update_entities: {e}")
+        logger.error(
+            f"CRUD_TOOL_ERROR - batch_update_entities - Table: {table_name}, Unexpected error: {e}"
+        )
         return {"success": False, "error": f"Internal server error: {str(e)}"}
 
 
@@ -386,6 +454,9 @@ async def handle_batch_delete_entities(
     table_name: str, conditions_list: List[Dict[str, Any]]
 ) -> Dict[str, Any]:
     """Handle batch delete entities tool execution"""
+    logger.info(
+        f"CRUD_TOOL - batch_delete_entities - Table: {table_name}, Operations: {len(conditions_list)}"
+    )
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
@@ -398,12 +469,20 @@ async def handle_batch_delete_entities(
         # Disconnect from database
         db_manager.disconnect()
 
+        logger.info(
+            f"CRUD_TOOL_SUCCESS - batch_delete_entities - Table: {table_name}, Result: {result.get('success', False)}"
+        )
         return result
 
     except DatabaseError as e:
+        logger.error(
+            f"CRUD_TOOL_ERROR - batch_delete_entities - Table: {table_name}, DatabaseError: {e}"
+        )
         return {"success": False, "error": str(e)}
     except Exception as e:
-        logger.error(f"Unexpected error in batch_delete_entities: {e}")
+        logger.error(
+            f"CRUD_TOOL_ERROR - batch_delete_entities - Table: {table_name}, Unexpected error: {e}"
+        )
         return {"success": False, "error": f"Internal server error: {str(e)}"}
 
 
