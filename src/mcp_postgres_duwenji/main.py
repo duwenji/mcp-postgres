@@ -53,11 +53,10 @@ def setup_logging(log_dir: str = "") -> tuple[logging.Logger, logging.Logger]:
 
     # 基本ログ設定
     logging.basicConfig(
-        level=logging.INFO,
+        level=logging.DEBUG,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
         handlers=[
             logging.FileHandler(general_log_path),  # ファイルへのログ出力
-            logging.StreamHandler(sys.stderr),  # 標準エラー出力にも出力
         ],
     )
     logger = logging.getLogger(__name__)
