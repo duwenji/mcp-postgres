@@ -218,6 +218,18 @@ class ProtocolLoggingReceiveStream:
                 )
             raise e
 
+    async def __aenter__(self) -> Any:
+        """非同期コンテキストマネージャーのエントリーポイント"""
+        if hasattr(self.original_stream, "__aenter__"):
+            return await self.original_stream.__aenter__()
+        return self
+
+    async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
+        """非同期コンテキストマネージャーの終了ポイント"""
+        if hasattr(self.original_stream, "__aexit__"):
+            return await self.original_stream.__aexit__(exc_type, exc_val, exc_tb)
+        return False
+
     def __getattr__(self, name: str) -> Any:
         """他のメソッドは元のストリームに委譲"""
         return getattr(self.original_stream, name)
