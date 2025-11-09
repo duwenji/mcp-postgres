@@ -97,6 +97,9 @@ def setup_logging(log_dir: str = "") -> tuple[logging.Logger, logging.Logger]:
 logger = None
 protocol_logger = None
 
+# Global configuration - loaded once in main()
+global_config = None
+
 
 def sanitize_log_output(result: Any) -> Any:
     """
@@ -218,19 +221,21 @@ async def protocol_logging_server(
 async def main() -> None:
     """Main entry point for the MCP server"""
     try:
-        # Load configuration
-        config = load_config()
+        # Load configuration once and store globally
+        global global_config
+        global_config = load_config()
 
         # ログ設定を再適用（カスタムディレクトリを反映）
         global logger, protocol_logger
         try:
-            logger, protocol_logger = setup_logging(config.log_dir)
-            logger.info(f"Configuration loaded successfully. config={config}")
+            logger, protocol_logger = setup_logging(global_config.log_dir)
+            logger.info(f"Configuration loaded successfully. config={global_config}")
         except Exception as log_error:
             # ログ設定失敗時のフォールバック
             print(f"Failed to setup logging: {log_error}", file=sys.stderr)
             print(
-                f"Configuration loaded successfully. config={config}", file=sys.stderr
+                f"Configuration loaded successfully. config={global_config}",
+                file=sys.stderr,
             )
             # 最小限のロガーを作成
             logger = logging.getLogger(__name__)
@@ -241,9 +246,9 @@ async def main() -> None:
             protocol_logger.setLevel(logging.INFO)
 
         # Handle Docker auto-setup if enabled
-        if config.docker.enabled:
+        if global_config.docker.enabled:
             logger.info("Docker auto-setup enabled, starting PostgreSQL container...")
-            docker_manager = DockerManager(config.docker)
+            docker_manager = DockerManager(global_config.docker)
 
             if docker_manager.is_docker_available():
                 result = docker_manager.start_container()
@@ -342,8 +347,7 @@ async def main() -> None:
 
         # Add dynamic table schema resources
         try:
-            config = load_config()
-            db_manager = DatabaseManager(config.postgres)
+            db_manager = DatabaseManager(global_config.postgres)
             db_manager.connection.connect()
             tables_result = db_manager.get_tables()
             db_manager.connection.disconnect()
