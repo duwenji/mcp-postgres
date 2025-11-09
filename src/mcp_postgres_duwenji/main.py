@@ -3,6 +3,7 @@ Main entry point for PostgreSQL MCP Server
 """
 
 import asyncio
+import json
 import logging
 import sys
 from typing import Any, Dict, List
@@ -28,7 +29,7 @@ from .resources import (
 )
 from mcp import Resource, Tool
 
-# Configure logging
+# Configure logging for general operations
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
@@ -38,6 +39,16 @@ logging.basicConfig(
     ],
 )
 logger = logging.getLogger(__name__)
+
+# Configure separate logger for protocol messages
+protocol_logger = logging.getLogger("mcp_protocol")
+protocol_logger.setLevel(logging.DEBUG)
+protocol_handler = logging.FileHandler("mcp_protocol.log")
+protocol_handler.setFormatter(
+    logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+)
+protocol_logger.addHandler(protocol_handler)
+protocol_logger.propagate = False  # Prevent duplicate logging
 
 
 def sanitize_log_output(result: Any) -> Any:
@@ -76,6 +87,85 @@ def sanitize_log_output(result: Any) -> Any:
         ]
     else:
         return result
+
+
+def sanitize_protocol_message(message: str) -> str:
+    """
+    MCPプロトコルメッセージの機密情報をマスクする関数
+
+    Args:
+        message: JSON形式のプロトコルメッセージ
+
+    Returns:
+        機密情報がマスクされたメッセージ
+    """
+    try:
+        data = json.loads(message)
+        sanitized_data = sanitize_log_output(data)
+        return json.dumps(sanitized_data, ensure_ascii=False)
+    except (json.JSONDecodeError, TypeError):
+        # JSONとして解析できない場合は元のメッセージを返す
+        return message
+
+
+class ProtocolLoggingStream:
+    """
+    MCPプロトコルメッセージをログに記録するストリームラッパー
+    """
+
+    def __init__(self, original_stream: Any, stream_type: str) -> None:
+        self.original_stream = original_stream
+        self.stream_type = stream_type  # 'input' or 'output'
+
+    async def read(self, size: int = -1) -> bytes:
+        """読み取り操作をラップしてログに記録"""
+        data: bytes = await self.original_stream.read(size)
+        if data and self.stream_type == "input":
+            try:
+                message = data.decode("utf-8").strip()
+                if message:
+                    sanitized_message = sanitize_protocol_message(message)
+                    protocol_logger.debug(f"REQUEST: {sanitized_message}")
+            except Exception as e:
+                protocol_logger.error(f"Error logging request: {e}")
+        return data
+
+    async def write(self, data: bytes) -> None:
+        """書き込み操作をラップしてログに記録"""
+        if data and self.stream_type == "output":
+            try:
+                message = data.decode("utf-8").strip()
+                if message:
+                    sanitized_message = sanitize_protocol_message(message)
+                    protocol_logger.debug(f"RESPONSE: {sanitized_message}")
+            except Exception as e:
+                protocol_logger.error(f"Error logging response: {e}")
+
+        await self.original_stream.write(data)
+
+    def __getattr__(self, name: str) -> Any:
+        """他のメソッドは元のストリームに委譲"""
+        return getattr(self.original_stream, name)
+
+
+async def protocol_logging_server(
+    read_stream: Any, write_stream: Any
+) -> tuple[Any, Any]:
+    """
+    MCPプロトコルメッセージをログに記録するラッパーサーバー
+
+    Args:
+        read_stream: 入力ストリーム
+        write_stream: 出力ストリーム
+
+    Returns:
+        ラップされたストリームのタプル
+    """
+    # 入出力ストリームをラップ
+    wrapped_read_stream = ProtocolLoggingStream(read_stream, "input")
+    wrapped_write_stream = ProtocolLoggingStream(write_stream, "output")
+
+    return wrapped_read_stream, wrapped_write_stream
 
 
 async def main() -> None:
@@ -259,7 +349,14 @@ async def main() -> None:
 
     # Start the server
     logger.info("Starting PostgreSQL MCP Server...")
+    protocol_logger.info("MCP Protocol logging started")
+
     async with stdio_server() as (read_stream, write_stream):
+        # プロトコルロギングを有効化
+        read_stream, write_stream = await protocol_logging_server(
+            read_stream, write_stream
+        )
+
         await server.run(
             read_stream, write_stream, server.create_initialization_options()
         )
