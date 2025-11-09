@@ -191,6 +191,11 @@ class ProtocolLoggingReceiveStream:
             if data is not None:
                 try:
                     if self.logger:
+                        # 詳細なデータ情報をログに記録
+                        self.logger.debug(
+                            f"RECEIVE_DATA_DETAILS - data_type: {type(data)}, data_repr: {repr(data)}"
+                        )
+
                         # データがbytes型の場合はデコードしてログに記録
                         if isinstance(data, bytes):
                             message = data.decode("utf-8").strip()
@@ -201,15 +206,60 @@ class ProtocolLoggingReceiveStream:
                                 self.logger.debug(
                                     "REQUEST_EMPTY - Empty message received"
                                 )
+                        elif hasattr(data, "message") and hasattr(data.message, "root"):
+                            # MCP SessionMessageオブジェクトの場合
+                            try:
+                                import json
+                                from mcp.shared.message import JSONRPCMessage
+
+                                if isinstance(data.message, JSONRPCMessage):
+                                    # JSON-RPCメッセージをJSON形式でログ出力
+                                    message_dict = {
+                                        "jsonrpc": data.message.root.jsonrpc,
+                                        "id": getattr(data.message.root, "id", None),
+                                        "method": getattr(
+                                            data.message.root, "method", None
+                                        ),
+                                        "params": getattr(
+                                            data.message.root, "params", None
+                                        ),
+                                    }
+                                    sanitized_message = sanitize_log_output(
+                                        message_dict
+                                    )
+                                    self.logger.debug(
+                                        f"REQUEST: {json.dumps(sanitized_message, ensure_ascii=False, indent=2)}"
+                                    )
+                                else:
+                                    # その他のメッセージタイプ
+                                    message_str = str(data)
+                                    sanitized_message = sanitize_protocol_message(
+                                        message_str
+                                    )
+                                    self.logger.debug(f"REQUEST: {sanitized_message}")
+                            except Exception as json_error:
+                                self.logger.warning(
+                                    f"JSON serialization error: {json_error}, falling back to string representation"
+                                )
+                                message_str = str(data)
+                                sanitized_message = sanitize_protocol_message(
+                                    message_str
+                                )
+                                self.logger.debug(f"REQUEST: {sanitized_message}")
                         else:
                             # その他の型の場合は文字列化してログに記録
                             message_str = str(data)
                             sanitized_message = sanitize_protocol_message(message_str)
                             self.logger.debug(f"REQUEST: {sanitized_message}")
+
                 except Exception as e:
-                    # loggerがNoneの場合でもエラーを出力しない
+                    # 詳細なエラー情報をログに記録
                     if self.logger:
-                        self.logger.error(f"Error logging request: {e}")
+                        import traceback
+
+                        self.logger.error(
+                            f"Error logging request: {e}, traceback: {traceback.format_exc()}"
+                        )
             return data
         except Exception as e:
             # 詳細なエラー情報をログに記録
@@ -303,6 +353,11 @@ class ProtocolLoggingSendStream:
             if item is not None:
                 try:
                     if self.logger:
+                        # 詳細なデータ情報をログに記録
+                        self.logger.debug(
+                            f"SEND_DATA_DETAILS - item_type: {type(item)}, item_repr: {repr(item)}"
+                        )
+
                         # データがbytes型の場合はデコードしてログに記録
                         if isinstance(item, bytes):
                             message = item.decode("utf-8").strip()
@@ -313,15 +368,59 @@ class ProtocolLoggingSendStream:
                                 self.logger.debug(
                                     "RESPONSE_EMPTY - Empty message to send"
                                 )
+                        elif hasattr(item, "message") and hasattr(item.message, "root"):
+                            # MCP SessionMessageオブジェクトの場合
+                            try:
+                                import json
+                                from mcp.shared.message import JSONRPCMessage
+
+                                if isinstance(item.message, JSONRPCMessage):
+                                    # JSON-RPCメッセージをJSON形式でログ出力
+                                    message_dict = {
+                                        "jsonrpc": item.message.root.jsonrpc,
+                                        "id": getattr(item.message.root, "id", None),
+                                        "result": getattr(
+                                            item.message.root, "result", None
+                                        ),
+                                        "error": getattr(
+                                            item.message.root, "error", None
+                                        ),
+                                    }
+                                    sanitized_message = sanitize_log_output(
+                                        message_dict
+                                    )
+                                    self.logger.debug(
+                                        f"RESPONSE: {json.dumps(sanitized_message, ensure_ascii=False, indent=2)}"
+                                    )
+                                else:
+                                    # その他のメッセージタイプ
+                                    message_str = str(item)
+                                    sanitized_message = sanitize_protocol_message(
+                                        message_str
+                                    )
+                                    self.logger.debug(f"RESPONSE: {sanitized_message}")
+                            except Exception as json_error:
+                                self.logger.warning(
+                                    f"JSON serialization error: {json_error}, falling back to string representation"
+                                )
+                                message_str = str(item)
+                                sanitized_message = sanitize_protocol_message(
+                                    message_str
+                                )
+                                self.logger.debug(f"RESPONSE: {sanitized_message}")
                         else:
                             # その他の型の場合は文字列化してログに記録
                             message_str = str(item)
                             sanitized_message = sanitize_protocol_message(message_str)
                             self.logger.debug(f"RESPONSE: {sanitized_message}")
                 except Exception as e:
-                    # loggerがNoneの場合でもエラーを出力しない
+                    # 詳細なエラー情報をログに記録
                     if self.logger:
-                        self.logger.error(f"Error logging response: {e}")
+                        import traceback
+
+                        self.logger.error(
+                            f"Error logging response: {e}, traceback: {traceback.format_exc()}"
+                        )
 
             # 元のストリームのsendメソッドを呼び出し
             await self.original_stream.send(item)
