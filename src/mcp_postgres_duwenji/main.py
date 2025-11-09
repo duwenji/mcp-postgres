@@ -163,57 +163,60 @@ class ProtocolLoggingReceiveStream:
     MCPプロトコルメッセージをログに記録する受信ストリームラッパー
     """
 
-    def __init__(self, original_stream: Any) -> None:
+    def __init__(
+        self, original_stream: Any, logger_instance: logging.Logger | None = None
+    ) -> None:
         self.original_stream = original_stream
+        self.logger = logger_instance or protocol_logger
 
-        if protocol_logger:
-            protocol_logger.debug(
+        if self.logger:
+            self.logger.debug(
                 f"PROTOCOL_RECEIVE_STREAM_INIT - original_stream_type: {type(original_stream)}"
             )
 
     async def receive(self) -> Any:
         """受信操作をラップしてログに記録"""
         try:
-            if protocol_logger:
-                protocol_logger.debug("RECEIVE_START - Waiting for message")
+            if self.logger:
+                self.logger.debug("RECEIVE_START - Waiting for message")
 
             # 元のストリームのreceiveメソッドを呼び出し
             data = await self.original_stream.receive()
 
-            if protocol_logger:
-                protocol_logger.debug(
+            if self.logger:
+                self.logger.debug(
                     f"RECEIVE_COMPLETE - data_received: {data is not None}, data_type: {type(data)}"
                 )
 
             if data is not None:
                 try:
-                    if protocol_logger:
+                    if self.logger:
                         # データがbytes型の場合はデコードしてログに記録
                         if isinstance(data, bytes):
                             message = data.decode("utf-8").strip()
                             if message:
                                 sanitized_message = sanitize_protocol_message(message)
-                                protocol_logger.debug(f"REQUEST: {sanitized_message}")
+                                self.logger.debug(f"REQUEST: {sanitized_message}")
                             else:
-                                protocol_logger.debug(
+                                self.logger.debug(
                                     "REQUEST_EMPTY - Empty message received"
                                 )
                         else:
                             # その他の型の場合は文字列化してログに記録
                             message_str = str(data)
                             sanitized_message = sanitize_protocol_message(message_str)
-                            protocol_logger.debug(f"REQUEST: {sanitized_message}")
+                            self.logger.debug(f"REQUEST: {sanitized_message}")
                 except Exception as e:
-                    # protocol_loggerがNoneの場合でもエラーを出力しない
-                    if protocol_logger:
-                        protocol_logger.error(f"Error logging request: {e}")
+                    # loggerがNoneの場合でもエラーを出力しない
+                    if self.logger:
+                        self.logger.error(f"Error logging request: {e}")
             return data
         except Exception as e:
             # 詳細なエラー情報をログに記録
-            if protocol_logger:
+            if self.logger:
                 import traceback
 
-                protocol_logger.error(
+                self.logger.error(
                     f"RECEIVE_ERROR - error: {e}, traceback: {traceback.format_exc()}"
                 )
             raise e
@@ -226,8 +229,8 @@ class ProtocolLoggingReceiveStream:
                 await self.original_stream.__aenter__()
         except Exception as e:
             # 元のストリームのエントリーポイントでエラーが発生した場合
-            if protocol_logger:
-                protocol_logger.error(f"Error in original stream __aenter__: {e}")
+            if self.logger:
+                self.logger.error(f"Error in original stream __aenter__: {e}")
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
@@ -237,8 +240,8 @@ class ProtocolLoggingReceiveStream:
                 return await self.original_stream.__aexit__(exc_type, exc_val, exc_tb)
         except Exception as e:
             # 元のストリームの終了ポイントでエラーが発生した場合
-            if protocol_logger:
-                protocol_logger.error(f"Error in original stream __aexit__: {e}")
+            if self.logger:
+                self.logger.error(f"Error in original stream __aexit__: {e}")
         return False
 
     def __getattr__(self, name: str) -> Any:
@@ -251,9 +254,26 @@ class ProtocolLoggingReceiveStream:
                 f"'{type(self).__name__}' object has no attribute '{name}'"
             )
 
-    def __aiter__(self) -> Any:
+    def __aiter__(self) -> "ProtocolLoggingReceiveStream":
         """非同期イテレーターをサポート"""
-        return self.original_stream.__aiter__()
+        return self
+
+    async def __anext__(self) -> Any:
+        """非同期イテレーターの次の要素を返す"""
+        try:
+            data = await self.receive()
+            if data is None:
+                raise StopAsyncIteration
+            return data
+        except Exception as e:
+            # 適切なエラーハンドリング
+            if isinstance(e, StopAsyncIteration):
+                raise
+            # 元の例外を保持したままStopAsyncIterationを送出
+            # これによりデバッグ情報が失われない
+            if self.logger:
+                self.logger.error(f"Async iteration error: {e}")
+            raise StopAsyncIteration from e
 
 
 class ProtocolLoggingSendStream:
@@ -261,57 +281,60 @@ class ProtocolLoggingSendStream:
     MCPプロトコルメッセージをログに記録する送信ストリームラッパー
     """
 
-    def __init__(self, original_stream: Any) -> None:
+    def __init__(
+        self, original_stream: Any, logger_instance: logging.Logger | None = None
+    ) -> None:
         self.original_stream = original_stream
+        self.logger = logger_instance or protocol_logger
 
-        if protocol_logger:
-            protocol_logger.debug(
+        if self.logger:
+            self.logger.debug(
                 f"PROTOCOL_SEND_STREAM_INIT - original_stream_type: {type(original_stream)}"
             )
 
     async def send(self, item: Any) -> None:
         """送信操作をラップしてログに記録"""
         try:
-            if protocol_logger:
-                protocol_logger.debug(
+            if self.logger:
+                self.logger.debug(
                     f"SEND_START - item_type: {type(item)}, item_not_none: {item is not None}"
                 )
 
             if item is not None:
                 try:
-                    if protocol_logger:
+                    if self.logger:
                         # データがbytes型の場合はデコードしてログに記録
                         if isinstance(item, bytes):
                             message = item.decode("utf-8").strip()
                             if message:
                                 sanitized_message = sanitize_protocol_message(message)
-                                protocol_logger.debug(f"RESPONSE: {sanitized_message}")
+                                self.logger.debug(f"RESPONSE: {sanitized_message}")
                             else:
-                                protocol_logger.debug(
+                                self.logger.debug(
                                     "RESPONSE_EMPTY - Empty message to send"
                                 )
                         else:
                             # その他の型の場合は文字列化してログに記録
                             message_str = str(item)
                             sanitized_message = sanitize_protocol_message(message_str)
-                            protocol_logger.debug(f"RESPONSE: {sanitized_message}")
+                            self.logger.debug(f"RESPONSE: {sanitized_message}")
                 except Exception as e:
-                    # protocol_loggerがNoneの場合でもエラーを出力しない
-                    if protocol_logger:
-                        protocol_logger.error(f"Error logging response: {e}")
+                    # loggerがNoneの場合でもエラーを出力しない
+                    if self.logger:
+                        self.logger.error(f"Error logging response: {e}")
 
             # 元のストリームのsendメソッドを呼び出し
             await self.original_stream.send(item)
 
-            if protocol_logger:
-                protocol_logger.debug("SEND_COMPLETE - Message sent successfully")
+            if self.logger:
+                self.logger.debug("SEND_COMPLETE - Message sent successfully")
 
         except Exception as e:
             # 詳細なエラー情報をログに記録
-            if protocol_logger:
+            if self.logger:
                 import traceback
 
-                protocol_logger.error(
+                self.logger.error(
                     f"SEND_ERROR - error: {e}, traceback: {traceback.format_exc()}"
                 )
             raise e
@@ -324,8 +347,8 @@ class ProtocolLoggingSendStream:
                 await self.original_stream.__aenter__()
         except Exception as e:
             # 元のストリームのエントリーポイントでエラーが発生した場合
-            if protocol_logger:
-                protocol_logger.error(f"Error in original stream __aenter__: {e}")
+            if self.logger:
+                self.logger.error(f"Error in original stream __aenter__: {e}")
         return self
 
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> Any:
@@ -335,8 +358,8 @@ class ProtocolLoggingSendStream:
                 return await self.original_stream.__aexit__(exc_type, exc_val, exc_tb)
         except Exception as e:
             # 元のストリームの終了ポイントでエラーが発生した場合
-            if protocol_logger:
-                protocol_logger.error(f"Error in original stream __aexit__: {e}")
+            if self.logger:
+                self.logger.error(f"Error in original stream __aexit__: {e}")
         return False
 
     def __getattr__(self, name: str) -> Any:
