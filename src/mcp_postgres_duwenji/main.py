@@ -51,15 +51,34 @@ def setup_logging(log_dir: str = "") -> tuple[logging.Logger, logging.Logger]:
         general_log_path = "mcp_postgres.log"
         protocol_log_path = "mcp_protocol.log"
 
-    # 基本ログ設定
-    logging.basicConfig(
-        level=logging.DEBUG,
-        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-        handlers=[
-            logging.FileHandler(general_log_path),  # ファイルへのログ出力
-        ],
-    )
+    # ルートロガーのリセット
+    root_logger = logging.getLogger()
+    for handler in root_logger.handlers[:]:
+        root_logger.removeHandler(handler)
+
+    # 基本ログ設定 - ファイルと標準出力の両方に出力
     logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    # ファイルハンドラー
+    file_handler = logging.FileHandler(general_log_path)
+    file_handler.setLevel(logging.DEBUG)
+
+    # 標準出力ハンドラー（フォールバック用）
+    console_handler = logging.StreamHandler(sys.stdout)
+    console_handler.setLevel(logging.INFO)
+
+    # フォーマッター
+    formatter = logging.Formatter(
+        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+    )
+    file_handler.setFormatter(formatter)
+    console_handler.setFormatter(formatter)
+
+    # ハンドラーを追加
+    logger.addHandler(file_handler)
+    logger.addHandler(console_handler)
+    logger.propagate = False  # 重複ログを防ぐ
 
     # プロトコルロガー設定
     protocol_logger = logging.getLogger("mcp_protocol")
@@ -204,9 +223,22 @@ async def main() -> None:
 
         # ログ設定を再適用（カスタムディレクトリを反映）
         global logger, protocol_logger
-        logger, protocol_logger = setup_logging(config.log_dir)
-
-        logger.info(f"Configuration loaded successfully. config={config}")
+        try:
+            logger, protocol_logger = setup_logging(config.log_dir)
+            logger.info(f"Configuration loaded successfully. config={config}")
+        except Exception as log_error:
+            # ログ設定失敗時のフォールバック
+            print(f"Failed to setup logging: {log_error}", file=sys.stderr)
+            print(
+                f"Configuration loaded successfully. config={config}", file=sys.stderr
+            )
+            # 最小限のロガーを作成
+            logger = logging.getLogger(__name__)
+            logger.addHandler(logging.StreamHandler(sys.stdout))
+            logger.setLevel(logging.INFO)
+            protocol_logger = logging.getLogger("mcp_protocol")
+            protocol_logger.addHandler(logging.StreamHandler(sys.stdout))
+            protocol_logger.setLevel(logging.INFO)
 
         # Handle Docker auto-setup if enabled
         if config.docker.enabled:
