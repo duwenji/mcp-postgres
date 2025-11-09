@@ -169,29 +169,43 @@ class ProtocolLoggingStream:
 
     async def read(self, size: int = -1) -> bytes:
         """読み取り操作をラップしてログに記録"""
-        data: bytes = await self.original_stream.read(size)
-        if data and self.stream_type == "input" and protocol_logger:
-            try:
-                message = data.decode("utf-8").strip()
-                if message:
-                    sanitized_message = sanitize_protocol_message(message)
-                    protocol_logger.debug(f"REQUEST: {sanitized_message}")
-            except Exception as e:
-                protocol_logger.error(f"Error logging request: {e}")
-        return data
+        try:
+            data: bytes = await self.original_stream.read(size)
+            if data and self.stream_type == "input":
+                try:
+                    if protocol_logger:
+                        message = data.decode("utf-8").strip()
+                        if message:
+                            sanitized_message = sanitize_protocol_message(message)
+                            protocol_logger.debug(f"REQUEST: {sanitized_message}")
+                except Exception as e:
+                    # protocol_loggerがNoneの場合でもエラーを出力しない
+                    if protocol_logger:
+                        protocol_logger.error(f"Error logging request: {e}")
+            return data
+        except Exception as e:
+            # 元のストリームのエラーをそのまま伝播
+            raise e
 
     async def write(self, data: bytes) -> None:
         """書き込み操作をラップしてログに記録"""
-        if data and self.stream_type == "output" and protocol_logger:
-            try:
-                message = data.decode("utf-8").strip()
-                if message:
-                    sanitized_message = sanitize_protocol_message(message)
-                    protocol_logger.debug(f"RESPONSE: {sanitized_message}")
-            except Exception as e:
-                protocol_logger.error(f"Error logging response: {e}")
+        try:
+            if data and self.stream_type == "output":
+                try:
+                    if protocol_logger:
+                        message = data.decode("utf-8").strip()
+                        if message:
+                            sanitized_message = sanitize_protocol_message(message)
+                            protocol_logger.debug(f"RESPONSE: {sanitized_message}")
+                except Exception as e:
+                    # protocol_loggerがNoneの場合でもエラーを出力しない
+                    if protocol_logger:
+                        protocol_logger.error(f"Error logging response: {e}")
 
-        await self.original_stream.write(data)
+            await self.original_stream.write(data)
+        except Exception as e:
+            # 元のストリームのエラーをそのまま伝播
+            raise e
 
     def __getattr__(self, name: str) -> Any:
         """他のメソッドは元のストリームに委譲"""
