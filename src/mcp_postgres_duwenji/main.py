@@ -167,10 +167,26 @@ class ProtocolLoggingStream:
         self.original_stream = original_stream
         self.stream_type = stream_type  # 'input' or 'output'
 
+        if protocol_logger:
+            protocol_logger.debug(
+                f"PROTOCOL_STREAM_INIT - stream_type: {stream_type}, original_stream_type: {type(original_stream)}"
+            )
+
     async def read(self, size: int = -1) -> bytes:
         """読み取り操作をラップしてログに記録"""
         try:
+            if protocol_logger:
+                protocol_logger.debug(
+                    f"READ_START - stream_type: {self.stream_type}, size: {size}"
+                )
+
             data: bytes = await self.original_stream.read(size)
+
+            if protocol_logger:
+                protocol_logger.debug(
+                    f"READ_COMPLETE - stream_type: {self.stream_type}, data_size: {len(data)}, has_data: {bool(data)}"
+                )
+
             if data and self.stream_type == "input":
                 try:
                     if protocol_logger:
@@ -178,6 +194,10 @@ class ProtocolLoggingStream:
                         if message:
                             sanitized_message = sanitize_protocol_message(message)
                             protocol_logger.debug(f"REQUEST: {sanitized_message}")
+                        else:
+                            protocol_logger.debug(
+                                "REQUEST_EMPTY - Empty message received"
+                            )
                 except Exception as e:
                     # protocol_loggerがNoneの場合でもエラーを出力しない
                     if protocol_logger:
@@ -185,11 +205,20 @@ class ProtocolLoggingStream:
             return data
         except Exception as e:
             # 元のストリームのエラーをそのまま伝播
+            if protocol_logger:
+                protocol_logger.error(
+                    f"READ_ERROR - stream_type: {self.stream_type}, error: {e}"
+                )
             raise e
 
     async def write(self, data: bytes) -> None:
         """書き込み操作をラップしてログに記録"""
         try:
+            if protocol_logger:
+                protocol_logger.debug(
+                    f"WRITE_START - stream_type: {self.stream_type}, data_size: {len(data)}"
+                )
+
             if data and self.stream_type == "output":
                 try:
                     if protocol_logger:
@@ -197,14 +226,28 @@ class ProtocolLoggingStream:
                         if message:
                             sanitized_message = sanitize_protocol_message(message)
                             protocol_logger.debug(f"RESPONSE: {sanitized_message}")
+                        else:
+                            protocol_logger.debug(
+                                "RESPONSE_EMPTY - Empty message to send"
+                            )
                 except Exception as e:
                     # protocol_loggerがNoneの場合でもエラーを出力しない
                     if protocol_logger:
                         protocol_logger.error(f"Error logging response: {e}")
 
             await self.original_stream.write(data)
+
+            if protocol_logger:
+                protocol_logger.debug(
+                    f"WRITE_COMPLETE - stream_type: {self.stream_type}, data_written: {len(data)}"
+                )
+
         except Exception as e:
             # 元のストリームのエラーをそのまま伝播
+            if protocol_logger:
+                protocol_logger.error(
+                    f"WRITE_ERROR - stream_type: {self.stream_type}, error: {e}"
+                )
             raise e
 
     def __getattr__(self, name: str) -> Any:
@@ -225,9 +268,15 @@ async def protocol_logging_server(
     Returns:
         ラップされたストリームのタプル
     """
+    if protocol_logger:
+        protocol_logger.debug("PROTOCOL_LOGGING_SERVER - Starting stream wrapping")
+
     # 入出力ストリームをラップ
     wrapped_read_stream = ProtocolLoggingStream(read_stream, "input")
     wrapped_write_stream = ProtocolLoggingStream(write_stream, "output")
+
+    if protocol_logger:
+        protocol_logger.debug("PROTOCOL_LOGGING_SERVER - Stream wrapping completed")
 
     return wrapped_read_stream, wrapped_write_stream
 
@@ -435,15 +484,33 @@ async def main() -> None:
     logger.info("Starting PostgreSQL MCP Server...")
     protocol_logger.info("MCP Protocol logging started")
 
-    async with stdio_server() as (read_stream, write_stream):
-        # プロトコルロギングを有効化
-        read_stream, write_stream = await protocol_logging_server(
-            read_stream, write_stream
-        )
+    try:
+        async with stdio_server() as (read_stream, write_stream):
+            if protocol_logger:
+                protocol_logger.debug(
+                    "STDIO_SERVER - stdio_server context entered successfully"
+                )
 
-        await server.run(
-            read_stream, write_stream, server.create_initialization_options()
-        )
+            # プロトコルロギングを有効化
+            read_stream, write_stream = await protocol_logging_server(
+                read_stream, write_stream
+            )
+
+            if protocol_logger:
+                protocol_logger.debug("SERVER_RUN - Starting server.run()")
+
+            await server.run(
+                read_stream, write_stream, server.create_initialization_options()
+            )
+
+            if protocol_logger:
+                protocol_logger.debug("SERVER_RUN - server.run() completed normally")
+
+    except Exception as e:
+        if protocol_logger:
+            protocol_logger.error(f"SERVER_ERROR - Exception in main server loop: {e}")
+        logger.error(f"Server error: {e}")
+        raise
 
 
 def cli_main() -> None:
