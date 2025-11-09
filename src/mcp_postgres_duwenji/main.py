@@ -29,26 +29,54 @@ from .resources import (
 )
 from mcp import Resource, Tool
 
-# Configure logging for general operations
-logging.basicConfig(
-    level=logging.INFO,
-    format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
-    handlers=[
-        logging.FileHandler("mcp_postgres.log"),  # ファイルへのログ出力
-        logging.StreamHandler(sys.stderr),  # 標準エラー出力にも出力
-    ],
-)
-logger = logging.getLogger(__name__)
 
-# Configure separate logger for protocol messages
-protocol_logger = logging.getLogger("mcp_protocol")
-protocol_logger.setLevel(logging.DEBUG)
-protocol_handler = logging.FileHandler("mcp_protocol.log")
-protocol_handler.setFormatter(
-    logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
-)
-protocol_logger.addHandler(protocol_handler)
-protocol_logger.propagate = False  # Prevent duplicate logging
+def setup_logging(log_dir: str = "") -> tuple[logging.Logger, logging.Logger]:
+    """
+    Setup logging with custom directory
+
+    Args:
+        log_dir: Custom log directory path. If empty, uses current directory.
+
+    Returns:
+        Tuple of (general logger, protocol logger)
+    """
+    import os
+
+    # ログディレクトリが指定されている場合は使用
+    if log_dir:
+        os.makedirs(log_dir, exist_ok=True)
+        general_log_path = os.path.join(log_dir, "mcp_postgres.log")
+        protocol_log_path = os.path.join(log_dir, "mcp_protocol.log")
+    else:
+        general_log_path = "mcp_postgres.log"
+        protocol_log_path = "mcp_protocol.log"
+
+    # 基本ログ設定
+    logging.basicConfig(
+        level=logging.INFO,
+        format="%(asctime)s - %(name)s - %(levelname)s - %(message)s",
+        handlers=[
+            logging.FileHandler(general_log_path),  # ファイルへのログ出力
+            logging.StreamHandler(sys.stderr),  # 標準エラー出力にも出力
+        ],
+    )
+    logger = logging.getLogger(__name__)
+
+    # プロトコルロガー設定
+    protocol_logger = logging.getLogger("mcp_protocol")
+    protocol_logger.setLevel(logging.DEBUG)
+    protocol_handler = logging.FileHandler(protocol_log_path)
+    protocol_handler.setFormatter(
+        logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+    )
+    protocol_logger.addHandler(protocol_handler)
+    protocol_logger.propagate = False  # Prevent duplicate logging
+
+    return logger, protocol_logger
+
+
+# Initialize logging with default settings
+logger, protocol_logger = setup_logging()
 
 
 def sanitize_log_output(result: Any) -> Any:
@@ -173,6 +201,11 @@ async def main() -> None:
     try:
         # Load configuration
         config = load_config()
+
+        # ログ設定を再適用（カスタムディレクトリを反映）
+        global logger, protocol_logger
+        logger, protocol_logger = setup_logging(config.log_dir)
+
         logger.info(f"Configuration loaded successfully. config={config}")
 
         # Handle Docker auto-setup if enabled

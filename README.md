@@ -66,7 +66,10 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. Provid
            "POSTGRES_DB": "your_database",
            "POSTGRES_USER": "your_username",
            "POSTGRES_PASSWORD": "your_password",
-           "POSTGRES_SSL_MODE": "prefer"
+           "POSTGRES_SSL_MODE": "prefer",
+           "MCP_LOG_LEVEL": "INFO",
+           "MCP_DEBUG": "true",
+           "MCP_LOG_DIR": "C:\\Logs\\mcp-postgres"
          }
        }
      }
@@ -97,7 +100,8 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. Provid
            "MCP_DOCKER_USERNAME": "postgres",
            "MCP_DOCKER_MAX_WAIT_TIME": "30",
            "MCP_LOG_LEVEL": "INFO",
-           "MCP_DEBUG": "true"
+           "MCP_DEBUG": "true",
+           "MCP_LOG_DIR": "C:\\Logs\\mcp-postgres"
          }
        }
      }
