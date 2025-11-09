@@ -158,47 +158,51 @@ def sanitize_protocol_message(message: str) -> str:
         return message
 
 
-class ProtocolLoggingStream:
+class ProtocolLoggingReceiveStream:
     """
-    MCPプロトコルメッセージをログに記録するストリームラッパー
+    MCPプロトコルメッセージをログに記録する受信ストリームラッパー
     """
 
-    def __init__(self, original_stream: Any, stream_type: str) -> None:
+    def __init__(self, original_stream: Any) -> None:
         self.original_stream = original_stream
-        self.stream_type = stream_type  # 'input' or 'output'
 
         if protocol_logger:
             protocol_logger.debug(
-                f"PROTOCOL_STREAM_INIT - stream_type: {stream_type}, original_stream_type: {type(original_stream)}"
+                f"PROTOCOL_RECEIVE_STREAM_INIT - original_stream_type: {type(original_stream)}"
             )
 
-    async def read(self, size: int = -1) -> bytes:
-        """読み取り操作をラップしてログに記録"""
+    async def receive(self) -> Any:
+        """受信操作をラップしてログに記録"""
         try:
             if protocol_logger:
-                protocol_logger.debug(
-                    f"READ_START - stream_type: {self.stream_type}, size: {size}"
-                )
+                protocol_logger.debug("RECEIVE_START - Waiting for message")
 
-            # 元のストリームのreadメソッドを呼び出し
-            data: bytes = await self.original_stream.read(size)
+            # 元のストリームのreceiveメソッドを呼び出し
+            data = await self.original_stream.receive()
 
             if protocol_logger:
                 protocol_logger.debug(
-                    f"READ_COMPLETE - stream_type: {self.stream_type}, data_size: {len(data)}, has_data: {bool(data)}"
+                    f"RECEIVE_COMPLETE - data_received: {data is not None}, data_type: {type(data)}"
                 )
 
-            if data and self.stream_type == "input":
+            if data is not None:
                 try:
                     if protocol_logger:
-                        message = data.decode("utf-8").strip()
-                        if message:
-                            sanitized_message = sanitize_protocol_message(message)
-                            protocol_logger.debug(f"REQUEST: {sanitized_message}")
+                        # データがbytes型の場合はデコードしてログに記録
+                        if isinstance(data, bytes):
+                            message = data.decode("utf-8").strip()
+                            if message:
+                                sanitized_message = sanitize_protocol_message(message)
+                                protocol_logger.debug(f"REQUEST: {sanitized_message}")
+                            else:
+                                protocol_logger.debug(
+                                    "REQUEST_EMPTY - Empty message received"
+                                )
                         else:
-                            protocol_logger.debug(
-                                "REQUEST_EMPTY - Empty message received"
-                            )
+                            # その他の型の場合は文字列化してログに記録
+                            message_str = str(data)
+                            sanitized_message = sanitize_protocol_message(message_str)
+                            protocol_logger.debug(f"REQUEST: {sanitized_message}")
                 except Exception as e:
                     # protocol_loggerがNoneの場合でもエラーを出力しない
                     if protocol_logger:
@@ -210,41 +214,64 @@ class ProtocolLoggingStream:
                 import traceback
 
                 protocol_logger.error(
-                    f"READ_ERROR - stream_type: {self.stream_type}, error: {e}, traceback: {traceback.format_exc()}"
+                    f"RECEIVE_ERROR - error: {e}, traceback: {traceback.format_exc()}"
                 )
             raise e
 
-    async def write(self, data: bytes) -> None:
-        """書き込み操作をラップしてログに記録"""
+    def __getattr__(self, name: str) -> Any:
+        """他のメソッドは元のストリームに委譲"""
+        return getattr(self.original_stream, name)
+
+
+class ProtocolLoggingSendStream:
+    """
+    MCPプロトコルメッセージをログに記録する送信ストリームラッパー
+    """
+
+    def __init__(self, original_stream: Any) -> None:
+        self.original_stream = original_stream
+
+        if protocol_logger:
+            protocol_logger.debug(
+                f"PROTOCOL_SEND_STREAM_INIT - original_stream_type: {type(original_stream)}"
+            )
+
+    async def send(self, item: Any) -> None:
+        """送信操作をラップしてログに記録"""
         try:
             if protocol_logger:
                 protocol_logger.debug(
-                    f"WRITE_START - stream_type: {self.stream_type}, data_size: {len(data)}"
+                    f"SEND_START - item_type: {type(item)}, item_not_none: {item is not None}"
                 )
 
-            if data and self.stream_type == "output":
+            if item is not None:
                 try:
                     if protocol_logger:
-                        message = data.decode("utf-8").strip()
-                        if message:
-                            sanitized_message = sanitize_protocol_message(message)
-                            protocol_logger.debug(f"RESPONSE: {sanitized_message}")
+                        # データがbytes型の場合はデコードしてログに記録
+                        if isinstance(item, bytes):
+                            message = item.decode("utf-8").strip()
+                            if message:
+                                sanitized_message = sanitize_protocol_message(message)
+                                protocol_logger.debug(f"RESPONSE: {sanitized_message}")
+                            else:
+                                protocol_logger.debug(
+                                    "RESPONSE_EMPTY - Empty message to send"
+                                )
                         else:
-                            protocol_logger.debug(
-                                "RESPONSE_EMPTY - Empty message to send"
-                            )
+                            # その他の型の場合は文字列化してログに記録
+                            message_str = str(item)
+                            sanitized_message = sanitize_protocol_message(message_str)
+                            protocol_logger.debug(f"RESPONSE: {sanitized_message}")
                 except Exception as e:
                     # protocol_loggerがNoneの場合でもエラーを出力しない
                     if protocol_logger:
                         protocol_logger.error(f"Error logging response: {e}")
 
-            # 元のストリームのwriteメソッドを呼び出し
-            await self.original_stream.write(data)
+            # 元のストリームのsendメソッドを呼び出し
+            await self.original_stream.send(item)
 
             if protocol_logger:
-                protocol_logger.debug(
-                    f"WRITE_COMPLETE - stream_type: {self.stream_type}, data_written: {len(data)}"
-                )
+                protocol_logger.debug("SEND_COMPLETE - Message sent successfully")
 
         except Exception as e:
             # 詳細なエラー情報をログに記録
@@ -252,7 +279,7 @@ class ProtocolLoggingStream:
                 import traceback
 
                 protocol_logger.error(
-                    f"WRITE_ERROR - stream_type: {self.stream_type}, error: {e}, traceback: {traceback.format_exc()}"
+                    f"SEND_ERROR - error: {e}, traceback: {traceback.format_exc()}"
                 )
             raise e
 
@@ -278,8 +305,8 @@ async def protocol_logging_server(
         protocol_logger.debug("PROTOCOL_LOGGING_SERVER - Starting stream wrapping")
 
     # 入出力ストリームをラップ
-    wrapped_read_stream = ProtocolLoggingStream(read_stream, "input")
-    wrapped_write_stream = ProtocolLoggingStream(write_stream, "output")
+    wrapped_read_stream = ProtocolLoggingReceiveStream(read_stream)
+    wrapped_write_stream = ProtocolLoggingSendStream(write_stream)
 
     if protocol_logger:
         protocol_logger.debug("PROTOCOL_LOGGING_SERVER - Stream wrapping completed")
