@@ -74,8 +74,9 @@ def setup_logging(log_dir: str = "") -> tuple[logging.Logger, logging.Logger]:
     return logger, protocol_logger
 
 
-# Initialize logging with default settings
-logger, protocol_logger = setup_logging()
+# Initialize logging with None - will be properly configured in main()
+logger = None
+protocol_logger = None
 
 
 def sanitize_log_output(result: Any) -> Any:
@@ -147,7 +148,7 @@ class ProtocolLoggingStream:
     async def read(self, size: int = -1) -> bytes:
         """読み取り操作をラップしてログに記録"""
         data: bytes = await self.original_stream.read(size)
-        if data and self.stream_type == "input":
+        if data and self.stream_type == "input" and protocol_logger:
             try:
                 message = data.decode("utf-8").strip()
                 if message:
@@ -159,7 +160,7 @@ class ProtocolLoggingStream:
 
     async def write(self, data: bytes) -> None:
         """書き込み操作をラップしてログに記録"""
-        if data and self.stream_type == "output":
+        if data and self.stream_type == "output" and protocol_logger:
             try:
                 message = data.decode("utf-8").strip()
                 if message:
@@ -227,7 +228,8 @@ async def main() -> None:
                 )
 
     except Exception as e:
-        logger.error(f"Failed to load configuration: {e}")
+        # 設定ロードエラー時は標準エラー出力に出力
+        print(f"Failed to load configuration: {e}", file=sys.stderr)
         sys.exit(1)
 
     # Create MCP server
