@@ -238,7 +238,18 @@ async def main() -> None:
                 return {"success": False, "error": str(e)}
         else:
             logger.error(f"TOOL_UNKNOWN - Tool: {name}")
-            return {"success": False, "error": f"Unknown tool: {name}"}
+            # JSON-RPC 2.0準拠のエラーレスポンスを返す
+            return {
+                "success": False,
+                "error": {
+                    "code": -32601,
+                    "message": f"Method not found: {name}",
+                    "data": {
+                        "available_methods": list(all_handlers.keys()),
+                        "server_type": "PostgreSQL MCP Server",
+                    },
+                },
+            }
 
     # Register tools via list_tools handler
     @server.list_tools()

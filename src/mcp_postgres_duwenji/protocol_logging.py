@@ -219,16 +219,26 @@ class ProtocolLoggingReceiveStream:
         try:
             data = await self.receive()
             if data is None:
+                # ストリーム終了を適切に通知
+                if self.logger:
+                    self.logger.debug("STREAM_END - End of stream reached")
                 raise StopAsyncIteration
             return data
-        except Exception as e:
-            # 適切なエラーハンドリング
-            if isinstance(e, StopAsyncIteration):
-                raise
-            # 元の例外を保持したままStopAsyncIterationを送出
-            # これによりデバッグ情報が失われない
+        except StopAsyncIteration:
+            # StopAsyncIterationはそのまま送出
             if self.logger:
-                self.logger.error(f"Async iteration error: {e}")
+                self.logger.debug("STREAM_END - StopAsyncIteration raised")
+            raise
+        except Exception as e:
+            # その他の例外はログに記録してからStopAsyncIterationを送出
+            if self.logger:
+                import traceback
+
+                self.logger.error(f"STREAM_ERROR - Async iteration error: {e}")
+                self.logger.debug(
+                    f"STREAM_ERROR_TRACE - Traceback: {traceback.format_exc()}"
+                )
+            # 元の例外を保持したままStopAsyncIterationを送出
             raise StopAsyncIteration from e
 
 
