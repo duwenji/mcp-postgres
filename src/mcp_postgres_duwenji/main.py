@@ -30,7 +30,14 @@ from .protocol_logging import (
     sanitize_log_output,
     protocol_logging_server,
 )
-from mcp import Resource, Tool
+from mcp import (
+    Resource,
+    Tool,
+    ListPromptsRequest,
+    ListPromptsResult,
+    GetPromptResult,
+)
+import mcp.types as types
 
 
 def setup_logging(
@@ -300,6 +307,13 @@ async def main() -> None:
         logger.info(f"RESOURCE_LIST - Total resources available: {total_resources}")
         return resources
 
+    @server.list_resource_templates()
+    async def handle_list_resource_templates() -> list[types.ResourceTemplate]:
+        """List available resource templates"""
+        logger.info("RESOURCE_TEMPLATE_LIST - Listing resource templates")
+        # Currently no resource templates implemented
+        return []
+
     @server.read_resource()
     async def handle_read_resource(uri: str) -> str:
         """Read resource content"""
@@ -341,6 +355,22 @@ async def main() -> None:
 
         logger.warning(f"RESOURCE_NOT_FOUND - Resource: {uri_str}")
         return f"Resource {uri_str} not found"
+
+    @server.list_prompts()
+    async def handle_list_prompts(request: ListPromptsRequest) -> ListPromptsResult:
+        """List available prompts"""
+        logger.info("PROMPT_LIST - Listing available prompts")
+        # Currently no prompts implemented
+        return ListPromptsResult(prompts=[])
+
+    @server.get_prompt()
+    async def handle_get_prompt(
+        name: str, arguments: dict[str, str] | None
+    ) -> GetPromptResult:
+        """Get prompt content"""
+        logger.info(f"PROMPT_GET - Getting prompt: {name}")
+        # Currently no prompts implemented
+        return GetPromptResult(description="", messages=[])
 
     # Start the server
     logger.info("Starting PostgreSQL MCP Server...")
