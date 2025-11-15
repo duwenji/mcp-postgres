@@ -72,7 +72,7 @@ def setup_logging(
     for handler in root_logger.handlers[:]:
         root_logger.removeHandler(handler)
 
-    # 基本ログ設定 - ファイルと標準出力の両方に出力
+    # 基本ログ設定 - ファイルのみに出力（sys.stdout/sys.stderrへの出力なし）
     logger = logging.getLogger(__name__)
     logger.setLevel(numeric_level)
 
@@ -80,20 +80,14 @@ def setup_logging(
     file_handler = logging.FileHandler(general_log_path)
     file_handler.setLevel(numeric_level)
 
-    # 標準出力ハンドラー（環境変数のログレベルを反映）
-    console_handler = logging.StreamHandler(sys.stdout)
-    console_handler.setLevel(numeric_level)
-
     # フォーマッター
     formatter = logging.Formatter(
         "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
     file_handler.setFormatter(formatter)
-    console_handler.setFormatter(formatter)
 
-    # ハンドラーを追加
+    # ファイルハンドラーのみ追加
     logger.addHandler(file_handler)
-    logger.addHandler(console_handler)
     logger.propagate = False  # 重複ログを防ぐ
 
     # プロトコルロガー設定
@@ -138,13 +132,10 @@ async def main() -> None:
                 f"Configuration loaded successfully. config={global_config}",
                 file=sys.stderr,
             )
-            # 最小限のロガーを作成
-            logger = logging.getLogger(__name__)
-            logger.addHandler(logging.StreamHandler(sys.stdout))
-            logger.setLevel(logging.INFO)
-            protocol_logger = logging.getLogger("mcp_protocol")
-            protocol_logger.addHandler(logging.StreamHandler(sys.stdout))
-            protocol_logger.setLevel(logging.INFO)
+            import traceback
+
+            print(f"Server error traceback: {traceback.format_exc()}")
+            sys.exit(1)
 
         # Handle Docker auto-setup if enabled
         if global_config.docker.enabled:
@@ -391,9 +382,8 @@ async def main() -> None:
         import traceback
 
         logger.error(f"Server error traceback: {traceback.format_exc()}")
-        # 詳細なエラー情報を標準エラー出力にも出力
-        print(f"Server error: {e}", file=sys.stderr)
-        print(f"Server error traceback: {traceback.format_exc()}", file=sys.stderr)
+        # 詳細なエラー情報はファイルにのみ出力（sys.stderr/sys.stdoutへの出力なし）
+        # 既にlogger.errorでファイルに出力されているため、追加の出力は不要
         raise
 
 
