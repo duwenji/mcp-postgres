@@ -520,10 +520,12 @@ async def handle_execute_sql_query(
     query: str, params: Optional[Dict[str, Any]] = None, limit: int = 1000
 ) -> Dict[str, Any]:
     """Handle execute SQL query tool execution"""
+    param_keys = list(params.keys()) if params else []
     logger.info(
-        f"CRUD_TOOL - execute_sql_query - Query: {query[:100]}..., Params keys: {list(params.keys()) if params else []}, Limit: {limit}"
+        f"CRUD_TOOL - execute_sql_query - Query: {query[:100]}..., "
+        f"Params keys: {param_keys}, Limit: {limit}"
     )
-    
+
     db_manager = None
     try:
         config = load_config()
@@ -541,14 +543,10 @@ async def handle_execute_sql_query(
         return result
 
     except DatabaseError as e:
-        logger.error(
-            f"CRUD_TOOL_ERROR - execute_sql_query - DatabaseError: {e}"
-        )
+        logger.error(f"CRUD_TOOL_ERROR - execute_sql_query - DatabaseError: {e}")
         return {"success": False, "error": str(e)}
     except Exception as e:
-        logger.error(
-            f"CRUD_TOOL_ERROR - execute_sql_query - Unexpected error: {e}"
-        )
+        logger.error(f"CRUD_TOOL_ERROR - execute_sql_query - Unexpected error: {e}")
         return {"success": False, "error": f"Internal server error: {str(e)}"}
     finally:
         # Always disconnect from database

@@ -776,7 +776,7 @@ class DatabaseManager:
                     query += f" LIMIT {limit}"
 
             results = self.connection.execute_query(query, params)
-            
+
             # Extract column names from first row if available
             columns = []
             if results and isinstance(results[0], dict):
@@ -787,7 +787,7 @@ class DatabaseManager:
                 "data": results,
                 "columns": columns,
                 "row_count": len(results),
-                "query": query
+                "query": query,
             }
         except DatabaseError as e:
             return {"success": False, "error": str(e)}
