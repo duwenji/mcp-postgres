@@ -21,6 +21,10 @@ from .tools.sampling_integration import (
     get_sampling_integration_tools,
     get_sampling_integration_handlers,
 )
+from .tools.elicitation_tools import (
+    get_elicitation_tools,
+    get_elicitation_handlers,
+)
 from .resources import (
     get_database_resources,
     get_resource_handlers,
@@ -162,7 +166,7 @@ async def main() -> None:
         print(f"Failed to load configuration: {e}", file=sys.stderr)
         sys.exit(1)
 
-    # Create MCP server
+    # Create MCP server with sampling/elicitation capabilities
     server = Server("postgres-mcp-server")
 
     # Get tools and handlers
@@ -178,6 +182,8 @@ async def main() -> None:
     transaction_handlers = get_transaction_handlers()
     sampling_integration_tools = get_sampling_integration_tools()
     sampling_integration_handlers = get_sampling_integration_handlers()
+    elicitation_tools = get_elicitation_tools()
+    elicitation_handlers = get_elicitation_handlers()
 
     # Combine all tools and handlers
     all_tools = (
@@ -187,6 +193,7 @@ async def main() -> None:
         + sampling_tools
         + transaction_tools
         + sampling_integration_tools
+        + elicitation_tools
     )
     all_handlers = {
         **crud_handlers,
@@ -195,6 +202,7 @@ async def main() -> None:
         **sampling_handlers,
         **transaction_handlers,
         **sampling_integration_handlers,
+        **elicitation_handlers,
     }
 
     # Register tool handlers
