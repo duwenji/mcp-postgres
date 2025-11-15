@@ -486,9 +486,79 @@ async def handle_batch_delete_entities(
         return {"success": False, "error": f"Internal server error: {str(e)}"}
 
 
+# SQL query execution tool
+execute_sql_query = Tool(
+    name="execute_sql_query",
+    description="Execute a SQL query and return results",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "query": {
+                "type": "string",
+                "description": "SQL query to execute",
+            },
+            "params": {
+                "type": "object",
+                "description": "Query parameters for parameterized queries",
+                "additionalProperties": True,
+            },
+            "limit": {
+                "type": "integer",
+                "description": "Maximum number of rows to return (default: 1000)",
+                "default": 1000,
+                "minimum": 1,
+                "maximum": 10000,
+            },
+        },
+        "required": ["query"],
+    },
+)
+
+
+# Tool handlers
+async def handle_execute_sql_query(
+    query: str, params: Optional[Dict[str, Any]] = None, limit: int = 1000
+) -> Dict[str, Any]:
+    """Handle execute SQL query tool execution"""
+    logger.info(
+        f"CRUD_TOOL - execute_sql_query - Query: {query[:100]}..., Params keys: {list(params.keys()) if params else []}, Limit: {limit}"
+    )
+    
+    db_manager = None
+    try:
+        config = load_config()
+        db_manager = DatabaseManager(config.postgres)
+
+        # Connect to database
+        db_manager.connect()
+
+        result = db_manager.execute_query(query, params, limit)
+
+        row_count = result.get("row_count", 0) if result.get("success") else 0
+        logger.info(
+            f"CRUD_TOOL_SUCCESS - execute_sql_query - Rows returned: {row_count}"
+        )
+        return result
+
+    except DatabaseError as e:
+        logger.error(
+            f"CRUD_TOOL_ERROR - execute_sql_query - DatabaseError: {e}"
+        )
+        return {"success": False, "error": str(e)}
+    except Exception as e:
+        logger.error(
+            f"CRUD_TOOL_ERROR - execute_sql_query - Unexpected error: {e}"
+        )
+        return {"success": False, "error": f"Internal server error: {str(e)}"}
+    finally:
+        # Always disconnect from database
+        if db_manager:
+            db_manager.disconnect()
+
+
 # Tool registry
 def get_crud_tools() -> List[Tool]:
-    """Get all CRUD tools including batch operations"""
+    """Get all CRUD tools including batch operations and SQL query execution"""
     return [
         create_entity,
         read_entity,
@@ -497,13 +567,14 @@ def get_crud_tools() -> List[Tool]:
         batch_create_entities,
         batch_update_entities,
         batch_delete_entities,
+        execute_sql_query,
     ]
 
 
 def get_crud_handlers() -> (
     Dict[str, Callable[..., Coroutine[Any, Any, Dict[str, Any]]]]
 ):
-    """Get tool handlers for CRUD operations including batch operations"""
+    """Get tool handlers for CRUD operations including batch operations and SQL query execution"""
     return {
         "create_entity": handle_create_entity,
         "read_entity": handle_read_entity,
@@ -512,4 +583,5 @@ def get_crud_handlers() -> (
         "batch_create_entities": handle_batch_create_entities,
         "batch_update_entities": handle_batch_update_entities,
         "batch_delete_entities": handle_batch_delete_entities,
+        "execute_sql_query": handle_execute_sql_query,
     }

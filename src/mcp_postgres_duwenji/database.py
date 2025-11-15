@@ -753,3 +753,41 @@ class DatabaseManager:
             }
         except DatabaseError as e:
             return {"success": False, "error": str(e)}
+
+    def execute_query(
+        self, query: str, params: Optional[Dict[str, Any]] = None, limit: int = 1000
+    ) -> Dict[str, Any]:
+        """
+        Execute a SQL query and return results
+
+        Args:
+            query: SQL query to execute
+            params: Query parameters for parameterized queries
+            limit: Maximum number of rows to return (for SELECT queries)
+
+        Returns:
+            Dictionary with query results
+        """
+        try:
+            # Add LIMIT clause to SELECT queries if not already present
+            if query.strip().upper().startswith("SELECT"):
+                # Check if query already has LIMIT clause
+                if "LIMIT" not in query.upper():
+                    query += f" LIMIT {limit}"
+
+            results = self.connection.execute_query(query, params)
+            
+            # Extract column names from first row if available
+            columns = []
+            if results and isinstance(results[0], dict):
+                columns = list(results[0].keys())
+
+            return {
+                "success": True,
+                "data": results,
+                "columns": columns,
+                "row_count": len(results),
+                "query": query
+            }
+        except DatabaseError as e:
+            return {"success": False, "error": str(e)}

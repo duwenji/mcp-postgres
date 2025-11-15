@@ -21,6 +21,7 @@ A Model Context Protocol (MCP) server for PostgreSQL database operations. Provid
 - `read_entity`: Query tables with optional conditions
 - `update_entity`: Update existing rows based on conditions
 - `delete_entity`: Remove rows from tables
+- `execute_sql_query`: Execute arbitrary SQL queries and return results
 
 ### Table Management Operations
 - `create_table`: Create new tables with specified schema
@@ -250,6 +251,26 @@ Once configured, you can use the MCP tools through your AI assistant:
   "conditions": {
     "id": 1
   }
+}
+```
+
+**Execute custom SQL query**:
+```json
+{
+  "query": "SELECT u.name, COUNT(o.id) as order_count FROM users u LEFT JOIN orders o ON u.id = o.user_id GROUP BY u.id, u.name HAVING COUNT(o.id) > 5",
+  "limit": 100
+}
+```
+
+**Execute parameterized SQL query**:
+```json
+{
+  "query": "SELECT * FROM users WHERE age > %(min_age)s AND created_at > %(start_date)s",
+  "params": {
+    "min_age": 18,
+    "start_date": "2024-01-01"
+  },
+  "limit": 50
 }
 ```
 
