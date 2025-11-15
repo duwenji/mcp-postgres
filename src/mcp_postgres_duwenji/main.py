@@ -30,6 +30,7 @@ from .protocol_logging import (
     sanitize_log_output,
     protocol_logging_server,
 )
+from .prompts import get_prompt_manager
 from mcp import (
     Resource,
     Tool,
@@ -351,17 +352,37 @@ async def main() -> None:
     async def handle_list_prompts(request: ListPromptsRequest) -> ListPromptsResult:
         """List available prompts"""
         logger.info("PROMPT_LIST - Listing available prompts")
-        # Currently no prompts implemented
-        return ListPromptsResult(prompts=[])
+        try:
+            prompt_manager = get_prompt_manager()
+            prompts = prompt_manager.list_prompts()
+            prompt_count = len(prompts)
+            logger.info(f"PROMPT_LIST_SUCCESS - Found {prompt_count} prompts")
+            return ListPromptsResult(prompts=prompts)
+        except Exception as e:
+            logger.error(f"PROMPT_LIST_ERROR - Error listing prompts: {e}")
+            return ListPromptsResult(prompts=[])
 
     @server.get_prompt()
     async def handle_get_prompt(
         name: str, arguments: dict[str, str] | None
     ) -> GetPromptResult:
         """Get prompt content"""
-        logger.info(f"PROMPT_GET - Getting prompt: {name}")
-        # Currently no prompts implemented
-        return GetPromptResult(description="", messages=[])
+        logger.info(f"PROMPT_GET - Getting prompt: {name}, arguments: {arguments}")
+        try:
+            prompt_manager = get_prompt_manager()
+            prompt = prompt_manager.get_prompt(name, arguments)
+
+            if prompt:
+                logger.info(f"PROMPT_GET_SUCCESS - Found prompt: {name}")
+                # For now, return empty messages since MCP Prompt doesn't contain message content
+                # In a real implementation, we would need to store the actual message content separately
+                return GetPromptResult(description=prompt.description, messages=[])
+            else:
+                logger.warning(f"PROMPT_NOT_FOUND - Prompt not found: {name}")
+                return GetPromptResult(description="", messages=[])
+        except Exception as e:
+            logger.error(f"PROMPT_GET_ERROR - Error getting prompt {name}: {e}")
+            return GetPromptResult(description="", messages=[])
 
     # Start the server
     logger.info("Starting PostgreSQL MCP Server...")
