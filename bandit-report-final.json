@@ -1,6 +1,6 @@
 {
   "errors": [],
-  "generated_at": "2025-11-16T13:23:37Z",
+  "generated_at": "2025-11-16T13:25:03Z",
   "metrics": {
     "_totals": {
       "CONFIDENCE.HIGH": 0,
@@ -226,9 +226,9 @@
   },
   "results": [
     {
-      "code": "145                         custom_conf_path: {\n146                             \"bind\": \"/tmp/custom_postgresql.conf\",\n147                             \"mode\": \"ro\",\n148                         },\n149                     },\n150                     detach=True,\n",
+      "code": "145                         custom_conf_path: {\n146                             \"bind\": \"/tmp/mcp_postgresql.conf\",\n147                             \"mode\": \"ro\",\n148                         },\n149                     },\n150                     detach=True,\n",
       "col_offset": 36,
-      "end_col_offset": 65,
+      "end_col_offset": 62,
       "filename": "src/mcp_postgres_duwenji\\docker_manager.py",
       "issue_confidence": "MEDIUM",
       "issue_cwe": {

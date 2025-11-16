@@ -143,7 +143,7 @@ class DockerManager:
                             "mode": "rw",
                         },
                         custom_conf_path: {
-                            "bind": "/tmp/custom_postgresql.conf",
+                            "bind": "/etc/mcp_postgresql.conf",
                             "mode": "ro",
                         },
                     },
@@ -292,7 +292,7 @@ class DockerManager:
                 # Backup original configuration
                 "cp /var/lib/postgresql/data/postgresql.conf /var/lib/postgresql/data/postgresql.conf.backup",
                 # Copy custom configuration
-                "cp /tmp/custom_postgresql.conf /var/lib/postgresql/data/postgresql.conf",
+                "cp /etc/mcp_postgresql.conf /var/lib/postgresql/data/postgresql.conf",
                 # Ensure proper permissions
                 "chown postgres:postgres /var/lib/postgresql/data/postgresql.conf",
                 "chmod 600 /var/lib/postgresql/data/postgresql.conf",

@@ -529,6 +529,8 @@ def _is_valid_table_name(table_name: str) -> bool:
         r"\b(?:DROP|DELETE|UPDATE|INSERT|CREATE|ALTER|TRUNCATE|EXEC|UNION|SELECT)\b",
         r"--",  # SQL comments
         r"/\*.*\*/",  # Multi-line comments
+        r"\s",  # Whitespace characters
+        r"\\",  # Backslashes
     ]
 
     for pattern in sql_injection_patterns:

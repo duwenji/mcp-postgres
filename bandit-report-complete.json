@@ -1,15 +1,15 @@
 {
   "errors": [],
-  "generated_at": "2025-11-16T13:23:37Z",
+  "generated_at": "2025-11-16T13:26:20Z",
   "metrics": {
     "_totals": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 1,
+      "CONFIDENCE.MEDIUM": 0,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
       "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 1,
+      "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
       "loc": 4899,
       "nosec": 6,
@@ -57,11 +57,11 @@
     "src/mcp_postgres_duwenji\\docker_manager.py": {
       "CONFIDENCE.HIGH": 0,
       "CONFIDENCE.LOW": 0,
-      "CONFIDENCE.MEDIUM": 1,
+      "CONFIDENCE.MEDIUM": 0,
       "CONFIDENCE.UNDEFINED": 0,
       "SEVERITY.HIGH": 0,
       "SEVERITY.LOW": 0,
-      "SEVERITY.MEDIUM": 1,
+      "SEVERITY.MEDIUM": 0,
       "SEVERITY.UNDEFINED": 0,
       "loc": 293,
       "nosec": 0,
@@ -224,29 +224,5 @@
       "skipped_tests": 0
     }
   },
-  "results": [
-    {
-      "code": "145                         custom_conf_path: {\n146                             \"bind\": \"/tmp/custom_postgresql.conf\",\n147                             \"mode\": \"ro\",\n148                         },\n149                     },\n150                     detach=True,\n",
-      "col_offset": 36,
-      "end_col_offset": 65,
-      "filename": "src/mcp_postgres_duwenji\\docker_manager.py",
-      "issue_confidence": "MEDIUM",
-      "issue_cwe": {
-        "id": 377,
-        "link": "https://cwe.mitre.org/data/definitions/377.html"
-      },
-      "issue_severity": "MEDIUM",
-      "issue_text": "Probable insecure usage of temp file/directory.",
-      "line_number": 146,
-      "line_range": [
-        145,
-        146,
-        147,
-        148
-      ],
-      "more_info": "https://bandit.readthedocs.io/en/1.8.6/plugins/b108_hardcoded_tmp_directory.html",
-      "test_id": "B108",
-      "test_name": "hardcoded_tmp_directory"
-    }
-  ]
+  "results": []
 }
