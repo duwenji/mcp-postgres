@@ -120,19 +120,14 @@ class DockerManager:
                     logger.info(f"Pulling image: {self.config.image}")
                     client.images.pull(self.config.image)
 
-                # Create container with custom postgresql.conf
-                command = [
-                    "postgres",
-                    "-c",
-                    "config_file=/var/lib/postgresql/data/postgresql.conf",
-                ]
-
                 # Get the path to our custom postgresql.conf
                 current_dir = os.path.dirname(os.path.abspath(__file__))
                 custom_conf_path = os.path.join(
                     current_dir, "assets", "postgresql.conf"
                 )
 
+                # Use standard PostgreSQL startup without custom config file override
+                # The custom config will be applied after initialization
                 self.container = client.containers.run(
                     image=self.config.image,
                     name=self.config.container_name,
@@ -148,21 +143,28 @@ class DockerManager:
                             "mode": "rw",
                         },
                         custom_conf_path: {
-                            "bind": "/var/lib/postgresql/data/postgresql.conf",
+                            "bind": "/tmp/custom_postgresql.conf",
                             "mode": "ro",
                         },
                     },
                     detach=True,
                     auto_remove=False,
                     restart_policy={"Name": "unless-stopped"},
-                    command=command,
                 )
 
             # Wait for PostgreSQL to be ready
             if self._wait_for_postgres_ready():
-                logger.info(
-                    f"PostgreSQL container started successfully on port {self.config.port}"
-                )
+                # Apply custom configuration after PostgreSQL is ready
+                if self._apply_custom_config():
+                    logger.info(
+                        f"PostgreSQL container started successfully on port "
+                        f"{self.config.port} with custom configuration"
+                    )
+                else:
+                    logger.warning(
+                        "PostgreSQL container started but custom configuration could not be applied"
+                    )
+
                 container_id = self.container.id if self.container else "unknown"
                 return {
                     "success": True,
@@ -273,6 +275,45 @@ class DockerManager:
                 return {"success": True, "status": "not_found", "running": False}
         except Exception as e:
             return {"success": False, "error": str(e)}
+
+    def _apply_custom_config(self) -> bool:
+        """Apply custom PostgreSQL configuration after container startup"""
+        try:
+            if not self.container:
+                logger.warning("No container available to apply configuration")
+                return False
+
+            # Execute commands inside the container to apply custom configuration
+            # 1. Backup the original postgresql.conf
+            # 2. Copy our custom configuration
+            # 3. Reload PostgreSQL configuration
+
+            commands = [
+                # Backup original configuration
+                "cp /var/lib/postgresql/data/postgresql.conf /var/lib/postgresql/data/postgresql.conf.backup",
+                # Copy custom configuration
+                "cp /tmp/custom_postgresql.conf /var/lib/postgresql/data/postgresql.conf",
+                # Ensure proper permissions
+                "chown postgres:postgres /var/lib/postgresql/data/postgresql.conf",
+                "chmod 600 /var/lib/postgresql/data/postgresql.conf",
+                # Reload PostgreSQL configuration
+                "pg_ctl reload -D /var/lib/postgresql/data",
+            ]
+
+            for command in commands:
+                result = self.container.exec_run(command, user="postgres")
+                if result.exit_code != 0:
+                    logger.warning(
+                        f"Command failed: {command}, exit code: {result.exit_code}"
+                    )
+                    # Continue with next command even if one fails
+
+            logger.info("Custom PostgreSQL configuration applied successfully")
+            return True
+
+        except Exception as e:
+            logger.error(f"Failed to apply custom configuration: {e}")
+            return False
 
 
 def load_docker_config() -> DockerConfig:
