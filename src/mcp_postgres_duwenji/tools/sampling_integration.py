@@ -7,11 +7,79 @@ data analysis and quality improvement.
 
 import logging
 import json
-from typing import Any, Dict, List, Callable, Coroutine
+from typing import Any, Dict, List, Callable, Coroutine, TypedDict
 from mcp import Tool
-
 from ..database import DatabaseManager
 from ..config import load_config
+
+
+class SamplingRequest(TypedDict):
+    """MCP Samplingリクエストの型定義"""
+
+    messages: List[Dict[str, str]]
+    max_tokens: int
+    temperature: float
+    model: str
+
+
+class Message(TypedDict):
+    """LLMメッセージの型定義"""
+
+    role: str
+    content: str
+
+
+class AnalysisContext(TypedDict):
+    """分析コンテキストの型定義"""
+
+    analysis_type: str
+    table_names: List[str]
+    schemas: List[Dict[str, Any]]
+    relationships: List[Dict[str, Any]]
+
+
+class LLMAnalysisResponse(TypedDict, total=False):
+    """LLM分析レスポンスの共通型定義"""
+
+    summary: str
+    current_level: str
+    target_level: str
+    issues: List[str]
+    recommendations: List[str]
+    expected_benefits: Dict[str, str]
+    scores: Dict[str, float]
+    bottlenecks: List[str]
+
+
+class QualityAssessmentResult(TypedDict):
+    """データ品質評価結果の型定義"""
+
+    quality_dimensions: List[str]
+    overall_score: float
+    dimension_scores: Dict[str, float]
+    identified_issues: List[str]
+    sample_data_summary: Dict[str, Dict[str, Any]]
+    improvement_priority: str
+
+
+class OptimizationPlanResult(TypedDict):
+    """スキーマ最適化計画結果の型定義"""
+
+    optimization_goals: List[str]
+    identified_bottlenecks: List[str]
+    recommendations: List[str]
+    expected_benefits: Dict[str, str]
+    implementation_plan: List[Dict[str, Any]]
+
+
+class SampleDataResult(TypedDict, total=False):
+    """サンプルデータ結果の型定義"""
+
+    sample_size: int
+    columns: List[str]
+    sample_rows: List[Dict[str, Any]]
+    error: str
+
 
 logger = logging.getLogger(__name__)
 
@@ -194,7 +262,7 @@ async def handle_request_llm_analysis(
             analysis_prompt = _generate_analysis_prompt(analysis_type, analysis_context)
 
         # Prepare MCP Sampling request
-        sampling_request = {
+        sampling_request: SamplingRequest = {
             "messages": [{"role": "user", "content": analysis_prompt}],
             "max_tokens": max_tokens,
             "temperature": temperature,
@@ -449,37 +517,37 @@ def _generate_optimization_prompt(goals: List[str]) -> str:
 def _is_valid_table_name(table_name: str) -> bool:
     """Validate table name to prevent SQL injection"""
     import re
-    
+
     # Basic validation: table names should only contain alphanumeric characters, underscores, and dots
     # and should not contain SQL keywords or special characters
     if not table_name or len(table_name) > 63:  # PostgreSQL identifier limit
         return False
-    
+
     # Check for SQL injection patterns
     sql_injection_patterns = [
-        r'[\'\";]',  # Single quotes, double quotes, semicolons
-        r'\b(?:DROP|DELETE|UPDATE|INSERT|CREATE|ALTER|TRUNCATE|EXEC|UNION|SELECT)\b',
-        r'--',  # SQL comments
-        r'/\*.*\*/',  # Multi-line comments
+        r"[\'\";]",  # Single quotes, double quotes, semicolons
+        r"\b(?:DROP|DELETE|UPDATE|INSERT|CREATE|ALTER|TRUNCATE|EXEC|UNION|SELECT)\b",
+        r"--",  # SQL comments
+        r"/\*.*\*/",  # Multi-line comments
     ]
-    
+
     for pattern in sql_injection_patterns:
         if re.search(pattern, table_name, re.IGNORECASE):
             return False
-    
+
     # Allow only alphanumeric, underscores, and dots
-    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_\.]*$', table_name):
+    if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_\.]*$", table_name):
         return False
-    
+
     return True
 
 
 # Helper functions for data processing
 async def _gather_sample_data(
     table_names: List[str], sample_size: int
-) -> Dict[str, Any]:
+) -> Dict[str, SampleDataResult]:
     """Gather sample data from tables for analysis"""
-    sample_data = {}
+    sample_data: Dict[str, SampleDataResult] = {}
 
     try:
         config = load_config()
@@ -492,23 +560,23 @@ async def _gather_sample_data(
                 # Validate table name to prevent SQL injection
                 if not _is_valid_table_name(table_name):
                     logger.warning(f"Invalid table name: {table_name}")
-                    sample_data[table_name] = {"error": "Invalid table name"}
+                    sample_data[table_name] = SampleDataResult(
+                        error="Invalid table name"
+                    )
                     continue
-                
+
                 query = "SELECT * FROM %s LIMIT %s"
                 results = db_manager.connection.execute_query(
                     query, {"table": table_name, "limit": sample_size}
                 )
-                sample_data[table_name] = {
-                    "sample_size": len(results),
-                    "columns": list(results[0].keys()) if results else [],
-                    "sample_rows": (
-                        results[:5] if results else []
-                    ),  # Limit sample for prompt
-                }
+                sample_data[table_name] = SampleDataResult(
+                    sample_size=len(results),
+                    columns=list(results[0].keys()) if results else [],
+                    sample_rows=results[:5] if results else [],
+                )
             except Exception as e:
                 logger.warning(f"Failed to sample data from {table_name}: {e}")
-                sample_data[table_name] = {"error": str(e)}
+                sample_data[table_name] = SampleDataResult(error=str(e))
 
         db_manager.connection.disconnect()
     except Exception as e:
@@ -518,62 +586,64 @@ async def _gather_sample_data(
 
 
 async def _simulate_llm_analysis(
-    analysis_type: str, context: Dict[str, Any], request: Dict[str, Any]
-) -> Dict[str, Any]:
+    analysis_type: str, context: Dict[str, Any], request: SamplingRequest
+) -> LLMAnalysisResponse:
     """Simulate LLM analysis response (to be replaced with actual MCP Sampling)"""
     # This is a simulation - in production, this would call MCP Sampling API
-    simulated_responses = {
-        "normalization_analysis": {
-            "summary": "Found several normalization opportunities",
-            "current_level": "1NF",
-            "target_level": "3NF",
-            "issues": [
+    simulated_responses: Dict[str, LLMAnalysisResponse] = {
+        "normalization_analysis": LLMAnalysisResponse(
+            summary="Found several normalization opportunities",
+            current_level="1NF",
+            target_level="3NF",
+            issues=[
                 "Partial dependencies found",
                 "Transitive dependencies identified",
             ],
-            "recommendations": [
+            recommendations=[
                 "Create separate tables for related entities",
                 "Add foreign key constraints",
                 "Remove redundant columns",
             ],
-            "expected_benefits": {
+            expected_benefits={
                 "data_integrity": "Improved",
                 "storage_efficiency": "Moderate improvement",
                 "query_performance": "Slight improvement",
             },
-        },
-        "data_quality_assessment": {
-            "summary": "Good overall data quality with some areas for improvement",
-            "scores": {"completeness": 8.5, "accuracy": 7.8, "consistency": 9.2},
-            "issues": [
+        ),
+        "data_quality_assessment": LLMAnalysisResponse(
+            summary="Good overall data quality with some areas for improvement",
+            scores={"completeness": 8.5, "accuracy": 7.8, "consistency": 9.2},
+            issues=[
                 "Missing values in optional fields",
                 "Inconsistent date formats",
             ],
-            "recommendations": [
+            recommendations=[
                 "Implement data validation rules",
                 "Add constraints for required fields",
             ],
-        },
-        "schema_optimization": {
-            "summary": "Several optimization opportunities identified",
-            "bottlenecks": [
+        ),
+        "schema_optimization": LLMAnalysisResponse(
+            summary="Several optimization opportunities identified",
+            bottlenecks=[
                 "Lack of indexes on frequently queried columns",
                 "Inefficient data types",
             ],
-            "recommendations": [
+            recommendations=[
                 "Add composite indexes on common query patterns",
                 "Consider partitioning large tables",
                 "Optimize data types for storage efficiency",
             ],
-            "expected_benefits": {
+            expected_benefits={
                 "query_performance": "Significant improvement",
                 "storage": "Moderate reduction",
                 "maintainability": "Improved",
             },
-        },
+        ),
     }
 
-    return simulated_responses.get(analysis_type, {"summary": "Analysis completed"})
+    return simulated_responses.get(
+        analysis_type, LLMAnalysisResponse(summary="Analysis completed")
+    )
 
 
 async def _process_normalization_plan(
@@ -619,40 +689,39 @@ async def _process_quality_assessment(
     llm_response: Dict[str, Any],
     quality_dimensions: List[str],
     sample_data: Dict[str, Any],
-) -> Dict[str, Any]:
+) -> QualityAssessmentResult:
     """Process LLM response into structured quality assessment"""
-    return {
-        "quality_dimensions": quality_dimensions,
-        "overall_score": (
-            sum(llm_response.get("scores", {}).values()) / len(quality_dimensions)
-            if llm_response.get("scores")
-            else 0
-        ),
-        "dimension_scores": llm_response.get("scores", {}),
-        "identified_issues": llm_response.get("issues", []),
-        "sample_data_summary": {
+    scores = llm_response.get("scores", {})
+    overall_score = sum(scores.values()) / len(quality_dimensions) if scores else 0.0
+
+    return QualityAssessmentResult(
+        quality_dimensions=quality_dimensions,
+        overall_score=overall_score,
+        dimension_scores=scores,
+        identified_issues=llm_response.get("issues", []),
+        sample_data_summary={
             table: {
                 "sample_size": data.get("sample_size", 0),
                 "columns": data.get("columns", []),
             }
             for table, data in sample_data.items()
         },
-        "improvement_priority": "medium",  # This would be calculated based on scores
-    }
+        improvement_priority="medium",  # This would be calculated based on scores
+    )
 
 
 async def _process_optimization_plan(
     llm_response: Dict[str, Any],
     optimization_goals: List[str],
     include_implementation_plan: bool,
-) -> Dict[str, Any]:
+) -> OptimizationPlanResult:
     """Process LLM response into structured optimization plan"""
-    return {
-        "optimization_goals": optimization_goals,
-        "identified_bottlenecks": llm_response.get("bottlenecks", []),
-        "recommendations": llm_response.get("recommendations", []),
-        "expected_benefits": llm_response.get("expected_benefits", {}),
-        "implementation_plan": (
+    return OptimizationPlanResult(
+        optimization_goals=optimization_goals,
+        identified_bottlenecks=llm_response.get("bottlenecks", []),
+        recommendations=llm_response.get("recommendations", []),
+        expected_benefits=llm_response.get("expected_benefits", {}),
+        implementation_plan=(
             [
                 {
                     "phase": 1,
@@ -676,7 +745,7 @@ async def _process_optimization_plan(
             if include_implementation_plan
             else []
         ),
-    }
+    )
 
 
 # Tool registry
