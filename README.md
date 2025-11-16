@@ -153,6 +153,10 @@ The PostgreSQL MCP Server supports the following environment variables for confi
 - `MCP_DOCKER_USERNAME`: Database username for Docker setup (default: postgres)
 - `MCP_DOCKER_MAX_WAIT_TIME`: Maximum wait time for container startup in seconds (default: 30)
 
+#### Performance Monitoring Variables
+- `MCP_SLOW_QUERY_THRESHOLD_MS`: Slow query threshold in milliseconds (default: 1000)
+- `MCP_ENABLE_AUTO_EXPLAIN`: Enable auto_explain extension for query plan logging (true/false, default: true)
+
 #### Logging and Debug Variables
 - `MCP_LOG_LEVEL`: Log level (DEBUG, INFO, WARNING, ERROR, CRITICAL, default: INFO)
 - `MCP_PROTOCOL_DEBUG`: Enable MCP protocol debug logging (true/false, default: false)
@@ -181,6 +185,10 @@ MCP_DOCKER_PASSWORD=postgres
 MCP_DOCKER_DATABASE=mcp-postgres-db
 MCP_DOCKER_USERNAME=postgres
 MCP_DOCKER_MAX_WAIT_TIME=30
+
+# Performance Monitoring
+MCP_SLOW_QUERY_THRESHOLD_MS=1000
+MCP_ENABLE_AUTO_EXPLAIN=true
 
 # Logging
 MCP_LOG_LEVEL=INFO
