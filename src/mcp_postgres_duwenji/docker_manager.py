@@ -127,24 +127,11 @@ class DockerManager:
                     "config_file=/var/lib/postgresql/data/postgresql.conf",
                 ]
 
-                # Copy custom postgresql.conf to container
-                import tempfile
-                import shutil
-
                 # Get the path to our custom postgresql.conf
-                current_dir = os.path.dirname(
-                    os.path.dirname(os.path.abspath(__file__))
-                )
+                current_dir = os.path.dirname(os.path.abspath(__file__))
                 custom_conf_path = os.path.join(
                     current_dir, "assets", "postgresql.conf"
                 )
-
-                # Create a temporary directory for the config file
-                temp_dir = tempfile.mkdtemp()
-                temp_conf_path = os.path.join(temp_dir, "postgresql.conf")
-
-                # Copy our custom config to temp location
-                shutil.copy2(custom_conf_path, temp_conf_path)
 
                 self.container = client.containers.run(
                     image=self.config.image,
@@ -160,7 +147,7 @@ class DockerManager:
                             "bind": "/var/lib/postgresql/data",
                             "mode": "rw",
                         },
-                        temp_conf_path: {
+                        custom_conf_path: {
                             "bind": "/var/lib/postgresql/data/postgresql.conf",
                             "mode": "ro",
                         },
@@ -170,21 +157,6 @@ class DockerManager:
                     restart_policy={"Name": "unless-stopped"},
                     command=command,
                 )
-
-                # Clean up temp directory after container starts
-                import threading
-
-                def cleanup_temp_dir() -> None:
-                    time.sleep(5)  # Wait for container to start
-                    try:
-                        shutil.rmtree(temp_dir)
-                        logger.debug(f"Cleaned up temp directory: {temp_dir}")
-                    except Exception as e:
-                        logger.warning(f"Failed to clean up temp directory: {e}")
-
-                cleanup_thread = threading.Thread(target=cleanup_temp_dir)
-                cleanup_thread.daemon = True
-                cleanup_thread.start()
 
             # Wait for PostgreSQL to be ready
             if self._wait_for_postgres_ready():
