@@ -446,6 +446,34 @@ def _generate_optimization_prompt(goals: List[str]) -> str:
     """
 
 
+def _is_valid_table_name(table_name: str) -> bool:
+    """Validate table name to prevent SQL injection"""
+    import re
+    
+    # Basic validation: table names should only contain alphanumeric characters, underscores, and dots
+    # and should not contain SQL keywords or special characters
+    if not table_name or len(table_name) > 63:  # PostgreSQL identifier limit
+        return False
+    
+    # Check for SQL injection patterns
+    sql_injection_patterns = [
+        r'[\'\";]',  # Single quotes, double quotes, semicolons
+        r'\b(?:DROP|DELETE|UPDATE|INSERT|CREATE|ALTER|TRUNCATE|EXEC|UNION|SELECT)\b',
+        r'--',  # SQL comments
+        r'/\*.*\*/',  # Multi-line comments
+    ]
+    
+    for pattern in sql_injection_patterns:
+        if re.search(pattern, table_name, re.IGNORECASE):
+            return False
+    
+    # Allow only alphanumeric, underscores, and dots
+    if not re.match(r'^[a-zA-Z_][a-zA-Z0-9_\.]*$', table_name):
+        return False
+    
+    return True
+
+
 # Helper functions for data processing
 async def _gather_sample_data(
     table_names: List[str], sample_size: int
@@ -460,7 +488,13 @@ async def _gather_sample_data(
 
         for table_name in table_names:
             try:
-                # Get sample data
+                # Get sample data - use parameterized query with table name validation
+                # Validate table name to prevent SQL injection
+                if not _is_valid_table_name(table_name):
+                    logger.warning(f"Invalid table name: {table_name}")
+                    sample_data[table_name] = {"error": "Invalid table name"}
+                    continue
+                
                 query = "SELECT * FROM %s LIMIT %s"
                 results = db_manager.connection.execute_query(
                     query, {"table": table_name, "limit": sample_size}
