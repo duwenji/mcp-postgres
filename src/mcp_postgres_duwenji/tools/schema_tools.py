@@ -105,7 +105,7 @@ async def handle_get_table_schema(
             numeric_precision,
             numeric_scale
         FROM information_schema.columns
-        WHERE table_schema = %s AND table_name = %s
+        WHERE table_schema = %(schema)s AND table_name = %(table_name)s
         ORDER BY ordinal_position
         """
 
@@ -134,7 +134,7 @@ async def handle_get_table_schema(
             ON tc.constraint_name = kcu.constraint_name
             AND tc.table_schema = kcu.table_schema
             AND tc.table_name = kcu.table_name
-        WHERE tc.table_schema = %s AND tc.table_name = %s
+        WHERE tc.table_schema = %(schema)s AND tc.table_name = %(table_name)s
         ORDER BY tc.constraint_type, tc.constraint_name
         """
 
@@ -162,7 +162,11 @@ async def handle_get_table_schema(
         elif isinstance(results, dict):
             columns_list = [results]
         else:
-            columns_list = list(results) if hasattr(results, "__iter__") else []
+            try:
+                columns_list = list(results) if hasattr(results, "__iter__") else []
+            except Exception as e:
+                logger.warning(f"Failed to convert results to list: {e}")
+                columns_list = []
 
         constraints_list = []
         if isinstance(constraints, list):
@@ -170,9 +174,13 @@ async def handle_get_table_schema(
         elif isinstance(constraints, dict):
             constraints_list = [constraints]
         else:
-            constraints_list = (
-                list(constraints) if hasattr(constraints, "__iter__") else []
-            )
+            try:
+                constraints_list = (
+                    list(constraints) if hasattr(constraints, "__iter__") else []
+                )
+            except Exception as e:
+                logger.warning(f"Failed to convert constraints to list: {e}")
+                constraints_list = []
 
         logger.info(
             f"Final columns_list type: {type(columns_list)}, length: {len(columns_list)}"

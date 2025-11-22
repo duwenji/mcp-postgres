@@ -133,10 +133,14 @@ class DatabaseConnection:
                 # For SELECT queries, fetch results
                 if query.strip().upper().startswith("SELECT"):
                     results = cursor.fetchall()
-                    converted_results = [
-                        convert_for_json_serialization(dict(row)) for row in results
-                    ]
-                    return converted_results
+                    # Ensure results are always a list of dictionaries
+                    if results:
+                        converted_results = [
+                            convert_for_json_serialization(dict(row)) for row in results
+                        ]
+                        return converted_results
+                    else:
+                        return []
                 elif (
                     query.strip().upper().startswith("INSERT")
                     and "RETURNING" in query.upper()
@@ -144,10 +148,13 @@ class DatabaseConnection:
                     # For INSERT with RETURNING clause, fetch the inserted row
                     results = cursor.fetchall()
                     self._connection.commit()
-                    converted_results = [
-                        convert_for_json_serialization(dict(row)) for row in results
-                    ]
-                    return converted_results
+                    if results:
+                        converted_results = [
+                            convert_for_json_serialization(dict(row)) for row in results
+                        ]
+                        return converted_results
+                    else:
+                        return []
                 elif (
                     query.strip().upper().startswith("UPDATE")
                     and "RETURNING" in query.upper()
@@ -155,10 +162,13 @@ class DatabaseConnection:
                     # For UPDATE with RETURNING clause, fetch the updated row
                     results = cursor.fetchall()
                     self._connection.commit()
-                    converted_results = [
-                        convert_for_json_serialization(dict(row)) for row in results
-                    ]
-                    return converted_results
+                    if results:
+                        converted_results = [
+                            convert_for_json_serialization(dict(row)) for row in results
+                        ]
+                        return converted_results
+                    else:
+                        return []
                 elif (
                     query.strip().upper().startswith("DELETE")
                     and "RETURNING" in query.upper()
@@ -166,10 +176,13 @@ class DatabaseConnection:
                     # For DELETE with RETURNING clause, fetch the deleted rows
                     results = cursor.fetchall()
                     self._connection.commit()
-                    converted_results = [
-                        convert_for_json_serialization(dict(row)) for row in results
-                    ]
-                    return converted_results
+                    if results:
+                        converted_results = [
+                            convert_for_json_serialization(dict(row)) for row in results
+                        ]
+                        return converted_results
+                    else:
+                        return []
                 else:
                     # For other queries, commit and return affected row count
                     self._connection.commit()
