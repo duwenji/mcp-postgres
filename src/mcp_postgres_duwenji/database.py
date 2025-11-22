@@ -128,7 +128,19 @@ class DatabaseConnection:
 
         try:
             with self._connection.cursor() as cursor:
-                cursor.execute(query, params)
+                # Convert list parameters to PostgreSQL arrays for ANY() clauses
+                converted_params: Dict[str, Any] = {}
+                if params:
+                    for key, value in params.items():
+                        if isinstance(value, list):
+                            # Convert list to PostgreSQL array format
+                            converted_params[key] = value
+                        else:
+                            converted_params[key] = value
+                else:
+                    converted_params = params or {}
+
+                cursor.execute(query, converted_params)
 
                 # For SELECT queries, fetch results
                 if query.strip().upper().startswith("SELECT"):

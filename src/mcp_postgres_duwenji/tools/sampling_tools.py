@@ -361,7 +361,7 @@ async def _analyze_relationships(
             ON ccu.constraint_name = tc.constraint_name
             AND ccu.table_schema = tc.table_schema
         WHERE tc.constraint_type = 'FOREIGN KEY'
-            AND tc.table_name = ANY(%s)
+            AND tc.table_name = ANY(%(table_names)s)
         """
 
         fk_results = db_manager.connection.execute_query(
@@ -375,7 +375,7 @@ async def _analyze_relationships(
             column_query = """
             SELECT column_name, data_type
             FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = %s
+            WHERE table_schema = 'public' AND table_name = %(table_name)s
             """
             columns = db_manager.connection.execute_query(
                 column_query, {"table_name": table_name}
