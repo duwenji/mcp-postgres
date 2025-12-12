@@ -85,9 +85,9 @@ def setup_logging(
     file_handler = logging.FileHandler(general_log_path)
     file_handler.setLevel(numeric_level)
 
-    # フォーマッター
+    # フォーマッター - ファイル名と行番号を追加
     formatter = logging.Formatter(
-        "%(asctime)s - %(name)s - %(levelname)s - %(message)s"
+        "%(asctime)s - %(name)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
     )
     file_handler.setFormatter(formatter)
 
@@ -95,12 +95,14 @@ def setup_logging(
     logger.addHandler(file_handler)
     logger.propagate = False  # 重複ログを防ぐ
 
-    # プロトコルロガー設定
+    # プロトコルロガー設定 - ファイル名と行番号を追加
     protocol_logger = logging.getLogger("mcp_protocol")
     protocol_logger.setLevel(numeric_level)
     protocol_handler = logging.FileHandler(protocol_log_path)
     protocol_handler.setFormatter(
-        logging.Formatter("%(asctime)s - %(levelname)s - %(message)s")
+        logging.Formatter(
+            "%(asctime)s - %(levelname)s - %(filename)s:%(lineno)d - %(message)s"
+        )
     )
     protocol_logger.addHandler(protocol_handler)
     protocol_logger.propagate = False  # Prevent duplicate logging
