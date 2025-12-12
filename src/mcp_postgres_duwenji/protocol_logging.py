@@ -417,23 +417,45 @@ async def protocol_logging_server(
     Returns:
         ラップされたストリームのタプル
     """
-    # プロトコルデバッグモードが有効な場合のみロギングを有効化
-    if global_config and global_config.protocol_debug:
-        if protocol_logger:
-            protocol_logger.debug("PROTOCOL_LOGGING_SERVER - Starting stream wrapping")
+    try:
+        # プロトコルデバッグモードが有効な場合のみロギングを有効化
+        if global_config and global_config.protocol_debug:
+            if protocol_logger:
+                protocol_logger.debug(
+                    "PROTOCOL_LOGGING_SERVER - Starting stream wrapping"
+                )
 
-        # 入出力ストリームをラップ
-        wrapped_read_stream = ProtocolLoggingReceiveStream(read_stream, protocol_logger)
-        wrapped_write_stream = ProtocolLoggingSendStream(write_stream, protocol_logger)
-
-        if protocol_logger:
-            protocol_logger.debug("PROTOCOL_LOGGING_SERVER - Stream wrapping completed")
-
-        return wrapped_read_stream, wrapped_write_stream
-    else:
-        # プロトコルデバッグモードが無効な場合は元のストリームをそのまま返す
-        if protocol_logger:
-            protocol_logger.debug(
-                "PROTOCOL_LOGGING_SERVER - Protocol debug disabled, using original streams"
+            # 入出力ストリームをラップ
+            wrapped_read_stream = ProtocolLoggingReceiveStream(
+                read_stream, protocol_logger
             )
-        return read_stream, write_stream
+            wrapped_write_stream = ProtocolLoggingSendStream(
+                write_stream, protocol_logger
+            )
+
+            if protocol_logger:
+                protocol_logger.debug(
+                    "PROTOCOL_LOGGING_SERVER - Stream wrapping completed"
+                )
+
+            return wrapped_read_stream, wrapped_write_stream
+        else:
+            # プロトコルデバッグモードが無効な場合は元のストリームをそのまま返す
+            if protocol_logger:
+                protocol_logger.debug(
+                    "PROTOCOL_LOGGING_SERVER - Protocol debug disabled, using original streams"
+                )
+            return read_stream, write_stream
+    except Exception as e:
+        # エラー情報をloggerに出力
+        if protocol_logger:
+            import traceback
+
+            protocol_logger.error(
+                f"PROTOCOL_LOGGING_SERVER_ERROR - Error in protocol logging server: {e}"
+            )
+            protocol_logger.debug(
+                f"PROTOCOL_LOGGING_SERVER_TRACE - Traceback: {traceback.format_exc()}"
+            )
+        # エラーを再送出
+        raise
