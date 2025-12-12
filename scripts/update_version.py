@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 """
 バージョン管理スクリプト
 
@@ -10,6 +11,7 @@ import re
 import sys
 import argparse
 from pathlib import Path
+import io
 
 
 def get_current_version():
@@ -139,6 +141,10 @@ def validate_new_version(new_version):
 
 
 def main():
+    # 標準出力のエンコーディングをUTF-8に設定
+    if sys.stdout.encoding != "utf-8":
+        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8")
+
     parser = argparse.ArgumentParser(
         description="pyproject.tomlのバージョン番号を更新",
         formatter_class=argparse.RawDescriptionHelpFormatter,

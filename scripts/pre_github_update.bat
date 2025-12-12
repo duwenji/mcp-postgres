@@ -1,5 +1,8 @@
 @echo off
-REM GitHubXV‘O‚Ì•iŽ¿ƒ`ƒFƒbƒN‚Æƒo[ƒWƒ‡ƒ“XVƒXƒNƒŠƒvƒg
+REM UTF-8ã‚¨ãƒ³ã‚³ãƒ¼ãƒ‡ã‚£ãƒ³ã‚°ã‚’è¨­å®š
+chcp 65001 > nul
+
+REM GitHubæ›´æ–°å‰ã®å“è³ªãƒã‚§ãƒƒã‚¯ã¨ãƒãƒ¼ã‚¸ãƒ§ãƒ³æ›´æ–°ã‚¹ã‚¯ãƒªãƒ—ãƒˆ
 REM PostgreSQL MCP Server Pre-GitHub Update Script
 
 echo ================================================
@@ -8,135 +11,138 @@ echo ================================================
 
 setlocal enabledelayedexpansion
 
-REM ƒXƒNƒŠƒvƒg‚ÌƒfƒBƒŒƒNƒgƒŠ‚ðŽæ“¾
+REM ã‚¹ã‚¯ãƒªãƒ—ãƒˆã®ãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒªã‚’å–å¾—
 set "SCRIPT_DIR=%~dp0"
 set "PROJECT_ROOT=%SCRIPT_DIR%.."
 
-REM ƒvƒƒWƒFƒNƒgƒ‹[ƒg‚ÉˆÚ“®
+REM ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆãƒ«ãƒ¼ãƒˆã«ç§»å‹•
 cd /d "%PROJECT_ROOT%"
 
-echo [INFO] ƒvƒƒWƒFƒNƒgƒfƒBƒŒƒNƒgƒŠ: %CD%
+echo [INFO] ãƒ—ãƒ­ã‚¸ã‚§ã‚¯ãƒˆãƒ‡ã‚£ãƒ¬ã‚¯ãƒˆãƒª: %CD%
 echo.
 
-REM ƒXƒeƒbƒv1: ƒR[ƒh•iŽ¿ƒ`ƒFƒbƒN
+REM ã‚¹ãƒ†ãƒƒãƒ—1: ã‚³ãƒ¼ãƒ‰å“è³ªãƒã‚§ãƒƒã‚¯
 echo ================================================
-echo   ƒXƒeƒbƒv1: ƒR[ƒh•iŽ¿ƒ`ƒFƒbƒN
+echo   ã‚¹ãƒ†ãƒƒãƒ—1: ã‚³ãƒ¼ãƒ‰å“è³ªãƒã‚§ãƒƒã‚¯
 echo ================================================
 
-echo [INFO] 1. Black‚É‚æ‚éƒR[ƒhƒtƒH[ƒ}ƒbƒgƒ`ƒFƒbƒN...
+echo [INFO] 1. Blackã«ã‚ˆã‚‹ã‚³ãƒ¼ãƒ‰ãƒ•ã‚©ãƒ¼ãƒžãƒƒãƒˆãƒã‚§ãƒƒã‚¯...
 uv run black --check src/ test/ scripts/
 if %errorlevel% neq 0 (
-    echo [WARNING] BlackƒtƒH[ƒ}ƒbƒgƒGƒ‰[‚ª‚ ‚è‚Ü‚·
-    echo [INFO] Ž©“®ƒtƒH[ƒ}ƒbƒg‚ðŽÀs‚µ‚Ü‚·...
+    echo [WARNING] Blackãƒ•ã‚©ãƒ¼ãƒžãƒƒãƒˆã‚¨ãƒ©ãƒ¼ãŒã‚ã‚Šã¾ã™
+    echo [INFO] è‡ªå‹•ãƒ•ã‚©ãƒ¼ãƒžãƒƒãƒˆã‚’å®Ÿè¡Œã—ã¾ã™...
     uv run black src/ test/ scripts/
-    echo [SUCCESS] Ž©“®ƒtƒH[ƒ}ƒbƒgŠ®—¹
+    echo [SUCCESS] è‡ªå‹•ãƒ•ã‚©ãƒ¼ãƒžãƒƒãƒˆå®Œäº†
 ) else (
-    echo [SUCCESS] BlackƒtƒH[ƒ}ƒbƒgƒ`ƒFƒbƒNŠ®—¹
+    echo [SUCCESS] Blackãƒ•ã‚©ãƒ¼ãƒžãƒƒãƒˆãƒã‚§ãƒƒã‚¯å®Œäº†
 )
 
 echo.
 
-echo [INFO] 2. Flake8‚É‚æ‚éƒŠƒ“ƒ^[ŽÀs...
+echo [INFO] 2. Flake8ã«ã‚ˆã‚‹ãƒªãƒ³ã‚¿ãƒ¼å®Ÿè¡Œ...
 uv run flake8 src/ test/ scripts/
 if %errorlevel% neq 0 (
-    echo [ERROR] Flake8ƒŠƒ“ƒ^[ƒGƒ‰[‚ª‚ ‚è‚Ü‚·
-    echo [INFO] ƒGƒ‰[‚ðC³‚µ‚Ä‚­‚¾‚³‚¢
+    echo [ERROR] Flake8ãƒªãƒ³ã‚¿ãƒ¼ã‚¨ãƒ©ãƒ¼ãŒã‚ã‚Šã¾ã™
+    echo [INFO] ã‚¨ãƒ©ãƒ¼ã‚’ä¿®æ­£ã—ã¦ãã ã•ã„
     set "LINT_ERRORS=1"
 ) else (
-    echo [SUCCESS] Flake8ƒŠƒ“ƒ^[ƒ`ƒFƒbƒNŠ®—¹
+    echo [SUCCESS] Flake8ãƒªãƒ³ã‚¿ãƒ¼ãƒã‚§ãƒƒã‚¯å®Œäº†
 )
 
 echo.
 
-echo [INFO] 3. MyPy‚É‚æ‚éŒ^ƒ`ƒFƒbƒN...
+echo [INFO] 3. MyPyã«ã‚ˆã‚‹åž‹ãƒã‚§ãƒƒã‚¯...
 uv run mypy src/
 if %errorlevel% neq 0 (
-    echo [ERROR] MyPyŒ^ƒ`ƒFƒbƒNƒGƒ‰[‚ª‚ ‚è‚Ü‚·
-    echo [INFO] ƒGƒ‰[‚ðC³‚µ‚Ä‚­‚¾‚³‚¢
+    echo [ERROR] MyPyåž‹ãƒã‚§ãƒƒã‚¯ã‚¨ãƒ©ãƒ¼ãŒã‚ã‚Šã¾ã™
+    echo [INFO] ã‚¨ãƒ©ãƒ¼ã‚’ä¿®æ­£ã—ã¦ãã ã•ã„
     set "TYPE_ERRORS=1"
 ) else (
-    echo [SUCCESS] MyPyŒ^ƒ`ƒFƒbƒNŠ®—¹
+    echo [SUCCESS] MyPyåž‹ãƒã‚§ãƒƒã‚¯å®Œäº†
 )
 
 echo.
 
-echo [INFO] 4. Bandit‚É‚æ‚éƒZƒLƒ…ƒŠƒeƒBƒ`ƒFƒbƒN...
+echo [INFO] 4. Banditã«ã‚ˆã‚‹ã‚»ã‚­ãƒ¥ãƒªãƒ†ã‚£ãƒã‚§ãƒƒã‚¯...
 uv run bandit -r src/ -f txt
 if %errorlevel% neq 0 (
-    echo [WARNING] BanditƒZƒLƒ…ƒŠƒeƒBŒx‚ª‚ ‚è‚Ü‚·
-    echo [INFO] Œx“à—e‚ðŠm”F‚µ‚Ä‚­‚¾‚³‚¢
+    echo [WARNING] Banditã‚»ã‚­ãƒ¥ãƒªãƒ†ã‚£è­¦å‘ŠãŒã‚ã‚Šã¾ã™
+    echo [INFO] è­¦å‘Šå†…å®¹ã‚’ç¢ºèªã—ã¦ãã ã•ã„
 ) else (
-    echo [SUCCESS] BanditƒZƒLƒ…ƒŠƒeƒBƒ`ƒFƒbƒNŠ®—¹
+    echo [SUCCESS] Banditã‚»ã‚­ãƒ¥ãƒªãƒ†ã‚£ãƒã‚§ãƒƒã‚¯å®Œäº†
 )
 
 echo.
 
-echo [INFO] 5. ƒeƒXƒgŽÀs...
+echo [INFO] 5. ãƒ†ã‚¹ãƒˆå®Ÿè¡Œ...
 uv run python -m pytest test/ -v --tb=short --cov=src --cov-report=term-missing
 if %errorlevel% neq 0 (
-    echo [ERROR] ƒeƒXƒg‚ªŽ¸”s‚µ‚Ü‚µ‚½
-    echo [INFO] ƒeƒXƒg‚ðC³‚µ‚Ä‚­‚¾‚³‚¢
+    echo [ERROR] ãƒ†ã‚¹ãƒˆãŒå¤±æ•—ã—ã¾ã—ãŸ
+    echo [INFO] ãƒ†ã‚¹ãƒˆã‚’ä¿®æ­£ã—ã¦ãã ã•ã„
     set "TEST_ERRORS=1"
 ) else (
-    echo [SUCCESS] ƒeƒXƒgŠ®—¹
+    echo [SUCCESS] ãƒ†ã‚¹ãƒˆå®Œäº†
 )
 
 echo.
 
-REM ƒGƒ‰[‚ª‚ ‚éê‡‚ÍŠm”F
+REM ã‚¨ãƒ©ãƒ¼ãŒã‚ã‚‹å ´åˆã¯ç¢ºèª
 if defined LINT_ERRORS (
-    echo [ERROR] Flake8ƒŠƒ“ƒ^[ƒGƒ‰[‚ª‚ ‚è‚Ü‚·BC³‚µ‚Ä‚©‚ç‘±s‚µ‚Ä‚­‚¾‚³‚¢B
+    echo [ERROR] Flake8ãƒªãƒ³ã‚¿ãƒ¼ã‚¨ãƒ©ãƒ¼ãŒã‚ã‚Šã¾ã™ã€‚ä¿®æ­£ã—ã¦ã‹ã‚‰ç¶šè¡Œã—ã¦ãã ã•ã„ã€‚
     goto :error_exit
 )
 
 if defined TYPE_ERRORS (
-    echo [ERROR] MyPyŒ^ƒ`ƒFƒbƒNƒGƒ‰[‚ª‚ ‚è‚Ü‚·BC³‚µ‚Ä‚©‚ç‘±s‚µ‚Ä‚­‚¾‚³‚¢B
+    echo [ERROR] MyPyåž‹ãƒã‚§ãƒƒã‚¯ã‚¨ãƒ©ãƒ¼ãŒã‚ã‚Šã¾ã™ã€‚ä¿®æ­£ã—ã¦ã‹ã‚‰ç¶šè¡Œã—ã¦ãã ã•ã„ã€‚
     goto :error_exit
 )
 
 if defined TEST_ERRORS (
-    echo [ERROR] ƒeƒXƒgƒGƒ‰[‚ª‚ ‚è‚Ü‚·BC³‚µ‚Ä‚©‚ç‘±s‚µ‚Ä‚­‚¾‚³‚¢B
+    echo [ERROR] ãƒ†ã‚¹ãƒˆã‚¨ãƒ©ãƒ¼ãŒã‚ã‚Šã¾ã™ã€‚ä¿®æ­£ã—ã¦ã‹ã‚‰ç¶šè¡Œã—ã¦ãã ã•ã„ã€‚
     goto :error_exit
 )
 
-echo [SUCCESS] ‚·‚×‚Ä‚ÌƒR[ƒh•iŽ¿ƒ`ƒFƒbƒN‚ªŠ®—¹‚µ‚Ü‚µ‚½
+echo [SUCCESS] ã™ã¹ã¦ã®ã‚³ãƒ¼ãƒ‰å“è³ªãƒã‚§ãƒƒã‚¯ãŒå®Œäº†ã—ã¾ã—ãŸ
 echo.
 
-REM ƒXƒeƒbƒv2: ƒo[ƒWƒ‡ƒ“XV
+REM ã‚¹ãƒ†ãƒƒãƒ—2: ãƒãƒ¼ã‚¸ãƒ§ãƒ³æ›´æ–°
 echo ================================================
-echo   ƒXƒeƒbƒv2: ƒo[ƒWƒ‡ƒ“XV
+echo   ã‚¹ãƒ†ãƒƒãƒ—2: ãƒãƒ¼ã‚¸ãƒ§ãƒ³æ›´æ–°
 echo ================================================
 
-echo [INFO] Œ»Ý‚Ìƒo[ƒWƒ‡ƒ“‚ðŠm”F...
+echo [INFO] ç¾åœ¨ã®ãƒãƒ¼ã‚¸ãƒ§ãƒ³ã‚’ç¢ºèª...
+set PYTHONIOENCODING=utf-8
 python scripts\update_version.py --current
 
 echo.
-echo [INFO] ƒo[ƒWƒ‡ƒ“XV‚ðŽÀs‚µ‚Ü‚·...
-echo [INFO] ƒpƒbƒ`ƒo[ƒWƒ‡ƒ“‚ðƒCƒ“ƒNƒŠƒƒ“ƒg‚µ‚Ü‚·i—á: 1.1.1 ¨ 1.1.2j
+echo [INFO] ãƒãƒ¼ã‚¸ãƒ§ãƒ³æ›´æ–°ã‚’å®Ÿè¡Œã—ã¾ã™...
+echo [INFO] ãƒ‘ãƒƒãƒãƒãƒ¼ã‚¸ãƒ§ãƒ³ã‚’ã‚¤ãƒ³ã‚¯ãƒªãƒ¡ãƒ³ãƒˆã—ã¾ã™ï¼ˆä¾‹: 1.1.1 â†’ 1.1.2ï¼‰
+set PYTHONIOENCODING=utf-8
 python scripts\update_version.py --patch --auto-confirm
 
 echo.
-echo [SUCCESS] ƒo[ƒWƒ‡ƒ“XV‚ªŠ®—¹‚µ‚Ü‚µ‚½
+echo [SUCCESS] ãƒãƒ¼ã‚¸ãƒ§ãƒ³æ›´æ–°ãŒå®Œäº†ã—ã¾ã—ãŸ
 
-REM ÅIŠm”F
+REM æœ€çµ‚ç¢ºèª
 echo ================================================
-echo   ÅIŠm”F
+echo   æœ€çµ‚ç¢ºèª
 echo ================================================
 
-echo [INFO] XVŒã‚Ìƒo[ƒWƒ‡ƒ“‚ðŠm”F...
+echo [INFO] æ›´æ–°å¾Œã®ãƒãƒ¼ã‚¸ãƒ§ãƒ³ã‚’ç¢ºèª...
+set PYTHONIOENCODING=utf-8
 python scripts\update_version.py --current
 
 echo.
-echo [INFO] GitƒXƒe[ƒ^ƒX‚ðŠm”F...
+echo [INFO] Gitã‚¹ãƒ†ãƒ¼ã‚¿ã‚¹ã‚’ç¢ºèª...
 git status
 
 echo.
 echo ================================================
-echo   [SUCCESS] ‚·‚×‚Ä‚ÌŽ–‘Oƒ`ƒFƒbƒN‚ªŠ®—¹‚µ‚Ü‚µ‚½
+echo   [SUCCESS] ã™ã¹ã¦ã®äº‹å‰ãƒã‚§ãƒƒã‚¯ãŒå®Œäº†ã—ã¾ã—ãŸ
 echo ================================================
-echo [INFO] ˆÈ‰º‚ÌƒRƒ}ƒ“ƒh‚ÅGitHub‚ÉƒvƒbƒVƒ…‚Å‚«‚Ü‚·:
+echo [INFO] ä»¥ä¸‹ã®ã‚³ãƒžãƒ³ãƒ‰ã§GitHubã«ãƒ—ãƒƒã‚·ãƒ¥ã§ãã¾ã™:
 echo        git add .
-echo        git commit -m "ƒo[ƒWƒ‡ƒ“XV‚Æ•iŽ¿ƒ`ƒFƒbƒNŠ®—¹"
+echo        git commit -m "ãƒãƒ¼ã‚¸ãƒ§ãƒ³æ›´æ–°ã¨å“è³ªãƒã‚§ãƒƒã‚¯å®Œäº†"
 echo        git push origin main
 echo ================================================
 
@@ -145,13 +151,13 @@ exit /b 0
 :error_exit
 echo.
 echo ================================================
-echo   [ERROR] ƒR[ƒh•iŽ¿ƒ`ƒFƒbƒN‚ÅƒGƒ‰[‚ª‚ ‚è‚Ü‚·
+echo   [ERROR] ã‚³ãƒ¼ãƒ‰å“è³ªãƒã‚§ãƒƒã‚¯ã§ã‚¨ãƒ©ãƒ¼ãŒã‚ã‚Šã¾ã™
 echo ================================================
-echo [INFO] ƒGƒ‰[‚ðC³‚µ‚Ä‚©‚çÄ“x‚±‚ÌƒXƒNƒŠƒvƒg‚ðŽÀs‚µ‚Ä‚­‚¾‚³‚¢
-echo [INFO] ŒÂ•Ê‚Ìƒ`ƒFƒbƒN‚ðŽÀs‚·‚éê‡‚Í:
-echo        - ƒtƒH[ƒ}ƒbƒg: uv run black src/ test/ scripts/
-echo        - ƒŠƒ“ƒ^[: uv run flake8 src/ test/ scripts/
-echo        - Œ^ƒ`ƒFƒbƒN: uv run mypy src/
-echo        - ƒeƒXƒg: uv run python -m pytest test/
+echo [INFO] ã‚¨ãƒ©ãƒ¼ã‚’ä¿®æ­£ã—ã¦ã‹ã‚‰å†åº¦ã“ã®ã‚¹ã‚¯ãƒªãƒ—ãƒˆã‚’å®Ÿè¡Œã—ã¦ãã ã•ã„
+echo [INFO] å€‹åˆ¥ã®ãƒã‚§ãƒƒã‚¯ã‚’å®Ÿè¡Œã™ã‚‹å ´åˆã¯:
+echo        - ãƒ•ã‚©ãƒ¼ãƒžãƒƒãƒˆ: uv run black src/ test/ scripts/
+echo        - ãƒªãƒ³ã‚¿ãƒ¼: uv run flake8 src/ test/ scripts/
+echo        - åž‹ãƒã‚§ãƒƒã‚¯: uv run mypy src/
+echo        - ãƒ†ã‚¹ãƒˆ: uv run python -m pytest test/
 echo ================================================
 exit /b 1

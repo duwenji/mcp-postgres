@@ -5,6 +5,7 @@ MCPプロトコルメッセージのロギング機能を提供するモジュ�
 import json
 import logging
 from typing import Any
+from anyio import EndOfStream
 
 
 def sanitize_log_output(result: Any) -> Any:
@@ -167,6 +168,11 @@ class ProtocolLoggingReceiveStream:
                             f"Error logging request: {e}, traceback: {traceback.format_exc()}"
                         )
             return data
+        except EndOfStream as e:
+            # ストリームの正常な終了 - デバッグログとして記録
+            if self.logger:
+                self.logger.debug(f"RECEIVE_END_OF_STREAM - Stream ended normally: {e}")
+            raise
         except Exception as e:
             # 詳細なエラー情報をログに記録
             if self.logger:
@@ -229,6 +235,11 @@ class ProtocolLoggingReceiveStream:
             if self.logger:
                 self.logger.debug("STREAM_END - StopAsyncIteration raised")
             raise
+        except EndOfStream as e:
+            # ストリームの正常な終了 - StopAsyncIterationに変換
+            if self.logger:
+                self.logger.debug(f"STREAM_END_OF_STREAM - Stream ended normally: {e}")
+            raise StopAsyncIteration from e
         except Exception as e:
             # その他の例外はログに記録してからStopAsyncIterationを送出
             if self.logger:

@@ -12,6 +12,10 @@
   - Docker自動生成時に`postgresql.conf`のパフォーマンス監視設定を自動適用
   - 環境変数による閾値設定（`MCP_SLOW_QUERY_THRESHOLD_MS`）
   - auto_explain拡張機能の自動有効化（`MCP_ENABLE_AUTO_EXPLAIN`）
+- **文字化け問題の解決**
+  - バッチファイルのUTF-8エンコーディング対応（`chcp 65001`の追加）
+  - PythonスクリプトのUTF-8出力設定（`PYTHONIOENCODING=utf-8`）
+  - 標準出力エンコーディングの明示的設定
 
 ## 次のステップ
 - 既存機能の安定化とパフォーマンス最適化
@@ -32,6 +36,7 @@
 - MCP Sampling機能の統合によりLLM連携が効果的
 - Docker自動構築が開発効率を大幅に向上
 - 構造化ロギングがデバッグと監視に有効
+- Windows環境での日本語文字化け問題は`chcp 65001`とUTF-8明示設定で解決可能
 
 ## 保留中のTODO事項
 
