@@ -202,7 +202,7 @@ class ProtocolLoggingReceiveStream:
                             message = data.decode("utf-8").strip()
                             if message:
                                 sanitized_message = sanitize_protocol_message(message)
-                                self.logger.debug(
+                                self.logger.info(
                                     f"REQUEST - original_length: {len(data)}, "
                                     f"decoded_length: {len(message)}, "
                                     f"sanitized_length: {len(sanitized_message)}, "
@@ -236,7 +236,7 @@ class ProtocolLoggingReceiveStream:
                                     json_output = json.dumps(
                                         sanitized_message, ensure_ascii=False, indent=2
                                     )
-                                    self.logger.debug(
+                                    self.logger.info(
                                         f"REQUEST_JSONRPC - message_type: JSONRPCMessage, "
                                         f"json_length: {len(json_output)}, "
                                         f"content:\n{json_output}"
@@ -247,7 +247,7 @@ class ProtocolLoggingReceiveStream:
                                     sanitized_message = sanitize_protocol_message(
                                         message_str
                                     )
-                                    self.logger.debug(
+                                    self.logger.info(
                                         f"REQUEST_OTHER_MCP - message_type: {type(data.message)}, "
                                         f"content_length: {len(sanitized_message)}, "
                                         f"content: {sanitized_message}"
@@ -260,7 +260,7 @@ class ProtocolLoggingReceiveStream:
                                 sanitized_message = sanitize_protocol_message(
                                     message_str
                                 )
-                                self.logger.debug(
+                                self.logger.info(
                                     f"REQUEST_FALLBACK - error: {json_error}, "
                                     f"content_length: {len(sanitized_message)}, "
                                     f"content: {sanitized_message}"
@@ -269,7 +269,7 @@ class ProtocolLoggingReceiveStream:
                             # その他の型の場合は文字列化してログに記録
                             message_str = str(data)
                             sanitized_message = sanitize_protocol_message(message_str)
-                            self.logger.debug(
+                            self.logger.info(
                                 f"REQUEST_STRING - original_type: {type(data)}, "
                                 f"string_length: {len(message_str)}, "
                                 f"sanitized_length: {len(sanitized_message)}, "
@@ -413,7 +413,7 @@ class ProtocolLoggingSendStream:
                             message = item.decode("utf-8").strip()
                             if message:
                                 sanitized_message = sanitize_protocol_message(message)
-                                self.logger.debug(
+                                self.logger.info(
                                     f"RESPONSE - original_length: {len(item)}, "
                                     f"decoded_length: {len(message)}, "
                                     f"sanitized_length: {len(sanitized_message)}, "
@@ -447,7 +447,7 @@ class ProtocolLoggingSendStream:
                                     json_output = json.dumps(
                                         sanitized_message, ensure_ascii=False, indent=2
                                     )
-                                    self.logger.debug(
+                                    self.logger.info(
                                         f"RESPONSE_JSONRPC - message_type: JSONRPCMessage, "
                                         f"json_length: {len(json_output)}, "
                                         f"content:\n{json_output}"
@@ -458,7 +458,7 @@ class ProtocolLoggingSendStream:
                                     sanitized_message = sanitize_protocol_message(
                                         message_str
                                     )
-                                    self.logger.debug(
+                                    self.logger.info(
                                         f"RESPONSE_OTHER_MCP - message_type: {type(item.message)}, "
                                         f"content_length: {len(sanitized_message)}, "
                                         f"content: {sanitized_message}"
@@ -471,7 +471,7 @@ class ProtocolLoggingSendStream:
                                 sanitized_message = sanitize_protocol_message(
                                     message_str
                                 )
-                                self.logger.debug(
+                                self.logger.info(
                                     f"RESPONSE_FALLBACK - error: {json_error}, "
                                     f"content_length: {len(sanitized_message)}, "
                                     f"content: {sanitized_message}"
@@ -480,7 +480,7 @@ class ProtocolLoggingSendStream:
                             # その他の型の場合は文字列化してログに記録
                             message_str = str(item)
                             sanitized_message = sanitize_protocol_message(message_str)
-                            self.logger.debug(
+                            self.logger.info(
                                 f"RESPONSE_STRING - original_type: {type(item)}, "
                                 f"string_length: {len(message_str)}, "
                                 f"sanitized_length: {len(sanitized_message)}, "
