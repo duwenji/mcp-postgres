@@ -18,13 +18,33 @@ def sanitize_log_output(result: Any) -> Any:
     Returns:
         機密情報がマスクされた結果データ
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if logger.isEnabledFor(logging.DEBUG):
+        input_repr = repr(result)[:200]
+        logger.debug(
+            f"SANITIZE_LOG_OUTPUT_START - input_type: {type(result)}, "
+            f"input_repr: {input_repr}"
+        )
+
     if isinstance(result, dict):
         sanitized = result.copy()
         # 機密情報を含む可能性のあるフィールドをマスク
         sensitive_fields = ["password", "secret", "token", "key", "auth"]
+        masked_count = 0
         for field in sensitive_fields:
             if field in sanitized:
                 sanitized[field] = "***MASKED***"
+                masked_count += 1
+
+        if logger.isEnabledFor(logging.DEBUG):
+            dict_keys = list(sanitized.keys())
+            logger.debug(
+                f"SANITIZE_LOG_OUTPUT_DICT - dict_keys: {dict_keys}, "
+                f"masked_fields: {masked_count}"
+            )
 
         # ネストされた辞書も再帰的に処理
         for key, value in sanitized.items():
@@ -36,13 +56,38 @@ def sanitize_log_output(result: Any) -> Any:
                     for item in value
                 ]
 
+        if logger.isEnabledFor(logging.DEBUG):
+            processed_keys = list(sanitized.keys())
+            logger.debug(
+                f"SANITIZE_LOG_OUTPUT_DICT_COMPLETE - "
+                f"processed_dict_keys: {processed_keys}"
+            )
+
         return sanitized
     elif isinstance(result, list):
-        return [
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(f"SANITIZE_LOG_OUTPUT_LIST - list_length: {len(result)}")
+
+        sanitized_list = [
             sanitize_log_output(item) if isinstance(item, dict) else item
             for item in result
         ]
+
+        if logger.isEnabledFor(logging.DEBUG):
+            processed_length = len(sanitized_list)
+            logger.debug(
+                f"SANITIZE_LOG_OUTPUT_LIST_COMPLETE - "
+                f"processed_list_length: {processed_length}"
+            )
+
+        return sanitized_list
     else:
+        if logger.isEnabledFor(logging.DEBUG):
+            value_preview = repr(result)[:100]
+            logger.debug(
+                f"SANITIZE_LOG_OUTPUT_OTHER - type: {type(result)}, "
+                f"value: {value_preview}"
+            )
         return result
 
 
@@ -56,11 +101,54 @@ def sanitize_protocol_message(message: str) -> str:
     Returns:
         機密情報がマスクされたメッセージ
     """
+    import logging
+
+    logger = logging.getLogger(__name__)
+
+    if logger.isEnabledFor(logging.DEBUG):
+        message_preview = message[:100]
+        logger.debug(
+            f"SANITIZE_PROTOCOL_MESSAGE_START - message_length: {len(message)}, "
+            f"message_preview: {message_preview}"
+        )
+
     try:
         data = json.loads(message)
+        if logger.isEnabledFor(logging.DEBUG):
+            is_dict = isinstance(data, dict)
+            is_list = isinstance(data, list)
+            logger.debug(
+                f"SANITIZE_PROTOCOL_MESSAGE_JSON_PARSED - data_type: {type(data)}, "
+                f"is_dict: {is_dict}, is_list: {is_list}"
+            )
+
         sanitized_data = sanitize_log_output(data)
-        return json.dumps(sanitized_data, ensure_ascii=False)
-    except (json.JSONDecodeError, TypeError):
+
+        result = json.dumps(sanitized_data, ensure_ascii=False)
+
+        if logger.isEnabledFor(logging.DEBUG):
+            result_preview = result[:100]
+            logger.debug(
+                f"SANITIZE_PROTOCOL_MESSAGE_COMPLETE - result_length: {len(result)}, "
+                f"result_preview: {result_preview}"
+            )
+
+        return result
+    except json.JSONDecodeError as e:
+        if logger.isEnabledFor(logging.DEBUG):
+            message_preview = message[:200]
+            logger.debug(
+                f"SANITIZE_PROTOCOL_MESSAGE_JSON_ERROR - JSONDecodeError: {e}, "
+                f"message_preview: {message_preview}"
+            )
+        # JSONとして解析できない場合は元のメッセージを返す
+        return message
+    except TypeError as e:
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug(
+                f"SANITIZE_PROTOCOL_MESSAGE_TYPE_ERROR - TypeError: {e}, "
+                f"message_type: {type(message)}"
+            )
         # JSONとして解析できない場合は元のメッセージを返す
         return message
 
@@ -78,7 +166,10 @@ class ProtocolLoggingReceiveStream:
 
         if self.logger:
             self.logger.debug(
-                f"PROTOCOL_RECEIVE_STREAM_INIT - original_stream_type: {type(original_stream)}"
+                f"PROTOCOL_RECEIVE_STREAM_INIT - original_stream_type: {type(original_stream)}, "
+                f"logger_provided: {logger_instance is not None}, "
+                f"logger_level: {logger_instance.level if logger_instance else 'N/A'}, "
+                f"logger_name: {logger_instance.name if logger_instance else 'N/A'}"
             )
 
     async def receive(self) -> Any:
@@ -99,8 +190,11 @@ class ProtocolLoggingReceiveStream:
                 try:
                     if self.logger:
                         # 詳細なデータ情報をログに記録
+                        data_size = len(data) if hasattr(data, "__len__") else "N/A"
                         self.logger.debug(
-                            f"RECEIVE_DATA_DETAILS - data_type: {type(data)}, data_repr: {repr(data)}"
+                            f"RECEIVE_DATA_DETAILS - data_type: {type(data)}, "
+                            f"data_size: {data_size}, "
+                            f"data_repr: {repr(data)[:500]}"
                         )
 
                         # データがbytes型の場合はデコードしてログに記録
@@ -108,10 +202,15 @@ class ProtocolLoggingReceiveStream:
                             message = data.decode("utf-8").strip()
                             if message:
                                 sanitized_message = sanitize_protocol_message(message)
-                                self.logger.debug(f"REQUEST: {sanitized_message}")
+                                self.logger.debug(
+                                    f"REQUEST - original_length: {len(data)}, "
+                                    f"decoded_length: {len(message)}, "
+                                    f"sanitized_length: {len(sanitized_message)}, "
+                                    f"content: {sanitized_message}"
+                                )
                             else:
                                 self.logger.debug(
-                                    "REQUEST_EMPTY - Empty message received"
+                                    "REQUEST_EMPTY - Empty message received, bytes_length: 0"
                                 )
                         elif hasattr(data, "message") and hasattr(data.message, "root"):
                             # MCP SessionMessageオブジェクトの場合
@@ -134,8 +233,13 @@ class ProtocolLoggingReceiveStream:
                                     sanitized_message = sanitize_log_output(
                                         message_dict
                                     )
+                                    json_output = json.dumps(
+                                        sanitized_message, ensure_ascii=False, indent=2
+                                    )
                                     self.logger.debug(
-                                        f"REQUEST: {json.dumps(sanitized_message, ensure_ascii=False, indent=2)}"
+                                        f"REQUEST_JSONRPC - message_type: JSONRPCMessage, "
+                                        f"json_length: {len(json_output)}, "
+                                        f"content:\n{json_output}"
                                     )
                                 else:
                                     # その他のメッセージタイプ
@@ -143,7 +247,11 @@ class ProtocolLoggingReceiveStream:
                                     sanitized_message = sanitize_protocol_message(
                                         message_str
                                     )
-                                    self.logger.debug(f"REQUEST: {sanitized_message}")
+                                    self.logger.debug(
+                                        f"REQUEST_OTHER_MCP - message_type: {type(data.message)}, "
+                                        f"content_length: {len(sanitized_message)}, "
+                                        f"content: {sanitized_message}"
+                                    )
                             except Exception as json_error:
                                 self.logger.warning(
                                     f"JSON serialization error: {json_error}, falling back to string representation"
@@ -152,12 +260,21 @@ class ProtocolLoggingReceiveStream:
                                 sanitized_message = sanitize_protocol_message(
                                     message_str
                                 )
-                                self.logger.debug(f"REQUEST: {sanitized_message}")
+                                self.logger.debug(
+                                    f"REQUEST_FALLBACK - error: {json_error}, "
+                                    f"content_length: {len(sanitized_message)}, "
+                                    f"content: {sanitized_message}"
+                                )
                         else:
                             # その他の型の場合は文字列化してログに記録
                             message_str = str(data)
                             sanitized_message = sanitize_protocol_message(message_str)
-                            self.logger.debug(f"REQUEST: {sanitized_message}")
+                            self.logger.debug(
+                                f"REQUEST_STRING - original_type: {type(data)}, "
+                                f"string_length: {len(message_str)}, "
+                                f"sanitized_length: {len(sanitized_message)}, "
+                                f"content: {sanitized_message}"
+                            )
 
                 except Exception as e:
                     # 詳細なエラー情報をログに記録
@@ -266,7 +383,10 @@ class ProtocolLoggingSendStream:
 
         if self.logger:
             self.logger.debug(
-                f"PROTOCOL_SEND_STREAM_INIT - original_stream_type: {type(original_stream)}"
+                f"PROTOCOL_SEND_STREAM_INIT - original_stream_type: {type(original_stream)}, "
+                f"logger_provided: {logger_instance is not None}, "
+                f"logger_level: {logger_instance.level if logger_instance else 'N/A'}, "
+                f"logger_name: {logger_instance.name if logger_instance else 'N/A'}"
             )
 
     async def send(self, item: Any) -> None:
@@ -281,8 +401,11 @@ class ProtocolLoggingSendStream:
                 try:
                     if self.logger:
                         # 詳細なデータ情報をログに記録
+                        item_size = len(item) if hasattr(item, "__len__") else "N/A"
                         self.logger.debug(
-                            f"SEND_DATA_DETAILS - item_type: {type(item)}, item_repr: {repr(item)}"
+                            f"SEND_DATA_DETAILS - item_type: {type(item)}, "
+                            f"item_size: {item_size}, "
+                            f"item_repr: {repr(item)[:500]}"
                         )
 
                         # データがbytes型の場合はデコードしてログに記録
@@ -290,10 +413,15 @@ class ProtocolLoggingSendStream:
                             message = item.decode("utf-8").strip()
                             if message:
                                 sanitized_message = sanitize_protocol_message(message)
-                                self.logger.debug(f"RESPONSE: {sanitized_message}")
+                                self.logger.debug(
+                                    f"RESPONSE - original_length: {len(item)}, "
+                                    f"decoded_length: {len(message)}, "
+                                    f"sanitized_length: {len(sanitized_message)}, "
+                                    f"content: {sanitized_message}"
+                                )
                             else:
                                 self.logger.debug(
-                                    "RESPONSE_EMPTY - Empty message to send"
+                                    "RESPONSE_EMPTY - Empty message to send, bytes_length: 0"
                                 )
                         elif hasattr(item, "message") and hasattr(item.message, "root"):
                             # MCP SessionMessageオブジェクトの場合
@@ -316,8 +444,13 @@ class ProtocolLoggingSendStream:
                                     sanitized_message = sanitize_log_output(
                                         message_dict
                                     )
+                                    json_output = json.dumps(
+                                        sanitized_message, ensure_ascii=False, indent=2
+                                    )
                                     self.logger.debug(
-                                        f"RESPONSE: {json.dumps(sanitized_message, ensure_ascii=False, indent=2)}"
+                                        f"RESPONSE_JSONRPC - message_type: JSONRPCMessage, "
+                                        f"json_length: {len(json_output)}, "
+                                        f"content:\n{json_output}"
                                     )
                                 else:
                                     # その他のメッセージタイプ
@@ -325,7 +458,11 @@ class ProtocolLoggingSendStream:
                                     sanitized_message = sanitize_protocol_message(
                                         message_str
                                     )
-                                    self.logger.debug(f"RESPONSE: {sanitized_message}")
+                                    self.logger.debug(
+                                        f"RESPONSE_OTHER_MCP - message_type: {type(item.message)}, "
+                                        f"content_length: {len(sanitized_message)}, "
+                                        f"content: {sanitized_message}"
+                                    )
                             except Exception as json_error:
                                 self.logger.warning(
                                     f"JSON serialization error: {json_error}, falling back to string representation"
@@ -334,12 +471,21 @@ class ProtocolLoggingSendStream:
                                 sanitized_message = sanitize_protocol_message(
                                     message_str
                                 )
-                                self.logger.debug(f"RESPONSE: {sanitized_message}")
+                                self.logger.debug(
+                                    f"RESPONSE_FALLBACK - error: {json_error}, "
+                                    f"content_length: {len(sanitized_message)}, "
+                                    f"content: {sanitized_message}"
+                                )
                         else:
                             # その他の型の場合は文字列化してログに記録
                             message_str = str(item)
                             sanitized_message = sanitize_protocol_message(message_str)
-                            self.logger.debug(f"RESPONSE: {sanitized_message}")
+                            self.logger.debug(
+                                f"RESPONSE_STRING - original_type: {type(item)}, "
+                                f"string_length: {len(message_str)}, "
+                                f"sanitized_length: {len(sanitized_message)}, "
+                                f"content: {sanitized_message}"
+                            )
                 except Exception as e:
                     # 詳細なエラー情報をログに記録
                     if self.logger:
