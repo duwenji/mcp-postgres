@@ -81,29 +81,29 @@ def clean_test_database(test_database_config):
 
     try:
         # Connect to database
-        manager.connection.connect()
+        manager.connect()
 
         # Clean test data
         print("Cleaning test database...")
 
         # Delete test data in reverse order to respect foreign key constraints
-        manager.connection.execute_query("DELETE FROM orders")
-        manager.connection.execute_query("DELETE FROM products")
-        manager.connection.execute_query("DELETE FROM users")
+        manager.execute_query("DELETE FROM orders")
+        manager.execute_query("DELETE FROM products")
+        manager.execute_query("DELETE FROM users")
 
         # Reset sequences
-        manager.connection.execute_query("ALTER SEQUENCE users_id_seq RESTART WITH 1")
-        manager.connection.execute_query(
+        manager.execute_query("ALTER SEQUENCE users_id_seq RESTART WITH 1")
+        manager.execute_query(
             "ALTER SEQUENCE products_id_seq RESTART WITH 1"
         )
-        manager.connection.execute_query("ALTER SEQUENCE orders_id_seq RESTART WITH 1")
+        manager.execute_query("ALTER SEQUENCE orders_id_seq RESTART WITH 1")
 
         print("Test database cleaned successfully")
 
     except Exception as e:
         print(f"Warning: Could not clean test database: {e}")
     finally:
-        manager.connection.disconnect()
+        manager.disconnect()
 
 
 def pytest_configure(config):
