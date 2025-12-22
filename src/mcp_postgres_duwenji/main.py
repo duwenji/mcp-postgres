@@ -189,28 +189,31 @@ async def health_check() -> Dict[str, Any]:
     health_status = {
         "status": "healthy",
         "timestamp": datetime.datetime.now().isoformat(),
-        "components": {},
+        "components": {},  # 型: Dict[str, Any]
     }
 
     # Check database connection
+    components: Dict[str, Any] = {}
     if global_pool_manager:
         try:
             db_healthy = global_pool_manager.test_connection()
-            health_status["components"]["database"] = {
+            components["database"] = {
                 "status": "healthy" if db_healthy else "unhealthy",
                 "connection_test": db_healthy,
             }
             if not db_healthy:
                 health_status["status"] = "unhealthy"
         except Exception as e:
-            health_status["components"]["database"] = {
+            components["database"] = {
                 "status": "error",
                 "error": str(e),
             }
             health_status["status"] = "unhealthy"
     else:
-        health_status["components"]["database"] = {"status": "not_initialized"}
+        components["database"] = {"status": "not_initialized"}
         health_status["status"] = "unhealthy"
+
+    health_status["components"] = components
 
     return health_status
 

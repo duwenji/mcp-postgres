@@ -4,17 +4,17 @@ Unit tests for execute_sql_query tool
 
 import sys
 import os
+import pytest
+from unittest.mock import Mock, patch
 
 # Add src directory to Python path for imports
 src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 if src_path not in sys.path:
     sys.path.insert(0, src_path)
 
-import pytest  # noqa: E402
-from unittest.mock import Mock, patch  # noqa: E402
-from src.mcp_postgres_duwenji.tools.crud_tools import (
+from src.mcp_postgres_duwenji.tools.crud_tools import (  # noqa: E402
     handle_execute_sql_query,
-)  # noqa: E402
+)
 from src.mcp_postgres_duwenji.database import DatabaseError  # noqa: E402
 
 
