@@ -32,6 +32,26 @@ def convert_for_json_serialization(obj: Any) -> Any:
         return {k: convert_for_json_serialization(v) for k, v in obj.items()}
     elif isinstance(obj, list):
         return [convert_for_json_serialization(item) for item in obj]
+    elif isinstance(obj, tuple):
+        # Convert tuple to list for JSON serialization
+        return [convert_for_json_serialization(item) for item in obj]
+    elif hasattr(obj, "__dict__"):
+        # Handle objects with __dict__ attribute
+        return convert_for_json_serialization(obj.__dict__)
+    elif hasattr(obj, "_asdict"):
+        # Handle namedtuple and similar objects
+        return convert_for_json_serialization(obj._asdict())
+    elif hasattr(obj, "_fields"):
+        # Handle psycopg2.extras.DictRow and similar row objects
+        # Convert to dictionary using field names
+        try:
+            return {
+                field: convert_for_json_serialization(getattr(obj, field))
+                for field in obj._fields
+            }
+        except (AttributeError, TypeError):
+            # Fallback to string representation
+            return str(obj)
     return obj
 
 
@@ -271,9 +291,43 @@ class DatabaseManager:
                     results = cursor.fetchall()
                     # Ensure results are always a list of dictionaries
                     if results:
-                        converted_results = [
-                            convert_for_json_serialization(row) for row in results
-                        ]
+                        # Convert all row objects to dictionaries
+                        converted_results = []
+                        for row in results:
+                            # First, convert row to dictionary
+                            if hasattr(row, "_asdict"):
+                                # Convert namedtuple-like objects to dict
+                                row_dict = row._asdict()
+                            elif hasattr(row, "_fields"):
+                                # Handle psycopg2.extras.DictRow and similar
+                                row_dict = {
+                                    field: getattr(row, field) for field in row._fields
+                                }
+                            elif isinstance(row, dict):
+                                # Already a dictionary
+                                row_dict = row
+                            elif isinstance(row, (tuple, list)):
+                                # Convert tuple/list to dict using column names
+                                if cursor.description is not None:
+                                    column_names = [
+                                        desc[0] for desc in cursor.description
+                                    ]
+                                    row_dict = dict(zip(column_names, row))
+                                else:
+                                    # If no description, create generic column names
+                                    column_names = [
+                                        f"column_{i}" for i in range(len(row))
+                                    ]
+                                    row_dict = dict(zip(column_names, row))
+                            else:
+                                # Fallback: convert to dict using __dict__ if available
+                                row_dict = (
+                                    row.__dict__ if hasattr(row, "__dict__") else {}
+                                )
+
+                            # Ensure all values in the dictionary are JSON serializable
+                            converted_row = convert_for_json_serialization(row_dict)
+                            converted_results.append(converted_row)
                         return converted_results
                     else:
                         return []
@@ -904,5 +958,8 @@ class DatabaseManager:
                 "row_count": len(results),
                 "query": query,
             }
-        except DatabaseError as e:
-            return {"success": False, "error": str(e)}
+        except Exception as e:
+            # Catch any exception and return error dictionary
+            error_message = str(e)
+            logger.error(f"Query execution failed: {error_message}")
+            return {"success": False, "error": error_message}
