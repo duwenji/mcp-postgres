@@ -109,7 +109,8 @@ async def main() -> None:
         server = Server("postgres-mcp-server")
 
         # Store context in server for access by handlers
-        server.context = context
+        # Use type: ignore to bypass mypy check since Server class doesn't have context attribute
+        server.context = context  # type: ignore[attr-defined]
 
         # Get tools and handlers
         crud_tools = get_crud_tools()
@@ -153,7 +154,7 @@ async def main() -> None:
             """Handle tool execution requests"""
 
             # Get context from server
-            context = server.context
+            context = server.context  # type: ignore[attr-defined]
             logger = context.logger
             config = context.config
 

@@ -1,6 +1,6 @@
 [project]
 name = "mcp-postgres-duwenji"
-version = "1.2.48"
+version = "1.2.49"
 description = "MCP server for PostgreSQL database operations"
 authors = [
     { name = "mcp-postgres" },
@@ -64,6 +64,7 @@ python_version = "3.10"
 warn_return_any = true
 warn_unused_configs = true
 disallow_untyped_defs = false  # 型アノテーション必須から警告へ緩和
+check_untyped_defs = true  # 未注釈関数の本体もチェック
 
 [tool.pytest.ini_options]
 testpaths = ["test"]

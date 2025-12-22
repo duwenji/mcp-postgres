@@ -138,6 +138,9 @@ def get_database_manager() -> DatabaseManager:
     # First try to get from global context
     context = get_global_context()
     if context and context.is_initialized():
+        # Ensure config is not None
+        if context.config is None:
+            raise RuntimeError("Context configuration is not initialized")
         db_manager = DatabaseManager(context.config.postgres, context.pool_manager)
         db_manager._is_connected = True
         return db_manager
@@ -174,6 +177,10 @@ def get_context_database_manager(context: AppContext) -> DatabaseManager:
     """
     if not context or not context.is_initialized():
         raise RuntimeError("Context is not properly initialized")
+
+    # Ensure config is not None
+    if context.config is None:
+        raise RuntimeError("Context configuration is not initialized")
 
     db_manager = DatabaseManager(context.config.postgres, context.pool_manager)
     db_manager._is_connected = True
