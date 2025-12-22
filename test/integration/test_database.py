@@ -232,8 +232,11 @@ class TestDatabaseErrorHandling:
         """Test executing malformed SQL query"""
         query = "SELECT * FROM invalid_syntax"
 
-        with pytest.raises(DatabaseError):
-            db_manager.execute_query(query)
+        result = db_manager.execute_query(query)
+
+        assert result["success"] is False
+        assert "error" in result
+        assert "invalid_syntax" in result["error"].lower()
 
     def test_empty_conditions(self, db_manager):
         """Test operations with empty conditions"""
