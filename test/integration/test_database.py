@@ -332,8 +332,8 @@ class TestTableManagement:
 
     def test_alter_table_add_column(self, db_manager):
         """Test adding a column to existing table"""
-        # First create a table
-        table_name = "test_alter_table"
+        # First create a table with unique name
+        table_name = "test_alter_table_add_column"
         columns = [
             {"name": "id", "type": "SERIAL", "primary_key": True},
             {"name": "name", "type": "VARCHAR(100)"},
@@ -355,8 +355,8 @@ class TestTableManagement:
 
     def test_alter_table_drop_column(self, db_manager):
         """Test dropping a column from existing table"""
-        # First create a table with multiple columns
-        table_name = "test_drop_column"
+        # First create a table with multiple columns and unique name
+        table_name = "test_alter_table_drop_column"
         columns = [
             {"name": "id", "type": "SERIAL", "primary_key": True},
             {"name": "name", "type": "VARCHAR(100)"},
@@ -377,8 +377,8 @@ class TestTableManagement:
 
     def test_alter_table_rename_column(self, db_manager):
         """Test renaming a column"""
-        # First create a table
-        table_name = "test_rename_column"
+        # First create a table with unique name
+        table_name = "test_alter_table_rename_column"
         columns = [
             {"name": "id", "type": "SERIAL", "primary_key": True},
             {"name": "old_name", "type": "VARCHAR(100)"},

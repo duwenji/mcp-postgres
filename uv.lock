@@ -866,7 +866,7 @@ wheels = [
 
 [[package]]
 name = "mcp-postgres-duwenji"
-version = "1.2.50"
+version = "1.2.52"
 source = { editable = "." }
 dependencies = [
     { name = "build" },

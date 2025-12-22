@@ -12,8 +12,11 @@ from typing import Dict, Any
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Configure test environment
+# Use environment variables if set, otherwise use defaults for local testing
 os.environ["POSTGRES_HOST"] = os.getenv("POSTGRES_HOST", "localhost")
-os.environ["POSTGRES_PORT"] = os.getenv("POSTGRES_PORT", "5433")
+os.environ["POSTGRES_PORT"] = os.getenv(
+    "POSTGRES_PORT", "5432"
+)  # Changed from 5433 to 5432
 os.environ["POSTGRES_DB"] = os.getenv("POSTGRES_DB", "mcp_test_db")
 os.environ["POSTGRES_USER"] = os.getenv("POSTGRES_USER", "test_user")
 os.environ["POSTGRES_PASSWORD"] = os.getenv("POSTGRES_PASSWORD", "test_password")

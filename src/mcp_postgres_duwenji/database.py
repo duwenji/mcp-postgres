@@ -43,15 +43,25 @@ def convert_for_json_serialization(obj: Any) -> Any:
         return convert_for_json_serialization(obj._asdict())
     elif hasattr(obj, "_fields"):
         # Handle psycopg2.extras.DictRow and similar row objects
-        # Convert to dictionary using field names
+        # Try to convert to dict first
         try:
-            return {
-                field: convert_for_json_serialization(getattr(obj, field))
-                for field in obj._fields
-            }
+            if hasattr(obj, "_asdict"):
+                return convert_for_json_serialization(obj._asdict())
+            elif hasattr(obj, "__dict__"):
+                return convert_for_json_serialization(obj.__dict__)
+            else:
+                # Convert using field names
+                return {
+                    field: convert_for_json_serialization(getattr(obj, field))
+                    for field in obj._fields
+                }
         except (AttributeError, TypeError):
-            # Fallback to string representation
-            return str(obj)
+            # Fallback: try dict() conversion
+            try:
+                return convert_for_json_serialization(dict(obj))
+            except (TypeError, ValueError):
+                # Fallback to string representation
+                return str(obj)
     return obj
 
 
@@ -271,7 +281,8 @@ class DatabaseManager:
             # Always get connection from pool
             connection = self.pool_manager.get_connection()
 
-            with connection.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
+            # Use standard cursor instead of DictCursor
+            with connection.cursor() as cursor:
                 # Convert list parameters to PostgreSQL arrays for ANY() clauses
                 converted_params: Dict[str, Any] = {}
                 if params:
@@ -289,41 +300,25 @@ class DatabaseManager:
                 # For SELECT queries, fetch results
                 if query.strip().upper().startswith("SELECT"):
                     results = cursor.fetchall()
+
                     # Ensure results are always a list of dictionaries
                     if results:
+                        # Get column names from cursor description
+                        column_names = []
+                        if cursor.description:
+                            column_names = [desc[0] for desc in cursor.description]
+
                         # Convert all row objects to dictionaries
                         converted_results = []
                         for row in results:
-                            # First, convert row to dictionary
-                            if hasattr(row, "_asdict"):
-                                # Convert namedtuple-like objects to dict
-                                row_dict = row._asdict()
-                            elif hasattr(row, "_fields"):
-                                # Handle psycopg2.extras.DictRow and similar
-                                row_dict = {
-                                    field: getattr(row, field) for field in row._fields
-                                }
-                            elif isinstance(row, dict):
-                                # Already a dictionary
-                                row_dict = row
-                            elif isinstance(row, (tuple, list)):
-                                # Convert tuple/list to dict using column names
-                                if cursor.description is not None:
-                                    column_names = [
-                                        desc[0] for desc in cursor.description
-                                    ]
-                                    row_dict = dict(zip(column_names, row))
-                                else:
-                                    # If no description, create generic column names
-                                    column_names = [
-                                        f"column_{i}" for i in range(len(row))
-                                    ]
-                                    row_dict = dict(zip(column_names, row))
+                            # Convert tuple to dictionary using column names
+                            if column_names and len(column_names) == len(row):
+                                row_dict = dict(zip(column_names, row))
                             else:
-                                # Fallback: convert to dict using __dict__ if available
-                                row_dict = (
-                                    row.__dict__ if hasattr(row, "__dict__") else {}
-                                )
+                                # Create generic column names
+                                row_dict = {
+                                    f"column_{i}": value for i, value in enumerate(row)
+                                }
 
                             # Ensure all values in the dictionary are JSON serializable
                             converted_row = convert_for_json_serialization(row_dict)
@@ -339,9 +334,22 @@ class DatabaseManager:
                     results = cursor.fetchall()
                     connection.commit()
                     if results:
-                        converted_results = [
-                            convert_for_json_serialization(row) for row in results
-                        ]
+                        # Get column names from cursor description
+                        column_names = []
+                        if cursor.description:
+                            column_names = [desc[0] for desc in cursor.description]
+
+                        converted_results = []
+                        for row in results:
+                            if column_names and len(column_names) == len(row):
+                                row_dict = dict(zip(column_names, row))
+                            else:
+                                row_dict = {
+                                    f"column_{i}": value for i, value in enumerate(row)
+                                }
+                            converted_results.append(
+                                convert_for_json_serialization(row_dict)
+                            )
                         return converted_results
                     else:
                         return []
@@ -353,9 +361,22 @@ class DatabaseManager:
                     results = cursor.fetchall()
                     connection.commit()
                     if results:
-                        converted_results = [
-                            convert_for_json_serialization(row) for row in results
-                        ]
+                        # Get column names from cursor description
+                        column_names = []
+                        if cursor.description:
+                            column_names = [desc[0] for desc in cursor.description]
+
+                        converted_results = []
+                        for row in results:
+                            if column_names and len(column_names) == len(row):
+                                row_dict = dict(zip(column_names, row))
+                            else:
+                                row_dict = {
+                                    f"column_{i}": value for i, value in enumerate(row)
+                                }
+                            converted_results.append(
+                                convert_for_json_serialization(row_dict)
+                            )
                         return converted_results
                     else:
                         return []
@@ -367,9 +388,22 @@ class DatabaseManager:
                     results = cursor.fetchall()
                     connection.commit()
                     if results:
-                        converted_results = [
-                            convert_for_json_serialization(row) for row in results
-                        ]
+                        # Get column names from cursor description
+                        column_names = []
+                        if cursor.description:
+                            column_names = [desc[0] for desc in cursor.description]
+
+                        converted_results = []
+                        for row in results:
+                            if column_names and len(column_names) == len(row):
+                                row_dict = dict(zip(column_names, row))
+                            else:
+                                row_dict = {
+                                    f"column_{i}": value for i, value in enumerate(row)
+                                }
+                            converted_results.append(
+                                convert_for_json_serialization(row_dict)
+                            )
                         return converted_results
                     else:
                         return []

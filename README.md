@@ -330,6 +330,104 @@ Docker自動セットアップを使用する場合、PostgreSQLコンテナは�
 }
 ```
 
+## テスト
+
+プロジェクトには包括的なテストスイートが含まれており、単体テストと統合テストの両方をカバーしています。
+
+### テストの実行
+
+#### Windows環境
+```bash
+# 単体テストのみ実行
+test\run_tests.bat unit
+
+# 統合テストのみ実行（PostgreSQLデータベースが必要）
+test\run_tests.bat integration
+
+# すべてのテストを実行
+test\run_tests.bat all
+```
+
+#### Unix/Linux/macOS環境
+```bash
+# 単体テストのみ実行
+uv run python -m pytest test/unit/ -v --tb=short --cov=src --cov-report=term-missing
+
+# 統合テストのみ実行（PostgreSQLデータベースが必要）
+RUN_INTEGRATION_TESTS=1 uv run python -m pytest test/integration/ -v --tb=short
+
+# すべてのテストを実行
+uv run python -m pytest test/unit/ -v --tb=short --cov=src --cov-report=term-missing
+RUN_INTEGRATION_TESTS=1 uv run python -m pytest test/integration/ -v --tb=short
+```
+
+### 統合テストの前提条件
+
+統合テストを実行するには、以下の条件を満たすPostgreSQLデータベースが必要です：
+
+1. **データベース接続**:
+   - ホスト: `localhost`
+   - ポート: `5432`
+   - データベース名: `mcp_test_db`
+   - ユーザー名: `test_user`
+   - パスワード: `test_password`
+
+2. **テストユーザーの権限**:
+   ```sql
+   -- テストユーザーにSUPERUSER権限を付与
+   ALTER USER test_user WITH SUPERUSER;
+   ```
+
+3. **テストテーブルの準備**:
+   - `users`, `products`, `orders` テーブルが自動的に作成されます
+   - テスト実行前にデータベースがクリーンアップされます
+
+### Dockerを使用したテスト環境のセットアップ
+
+既存のDockerコンテナを使用してテスト環境を準備できます：
+
+```bash
+# テスト用データベースを作成
+docker exec mcp-postgres-auto psql -U postgres -c "CREATE DATABASE mcp_test_db;"
+
+# テストユーザーを作成
+docker exec mcp-postgres-auto psql -U postgres -c "CREATE USER test_user WITH PASSWORD 'test_password';"
+
+# テストユーザーに権限を付与
+docker exec mcp-postgres-auto psql -U postgres -c "ALTER USER test_user WITH SUPERUSER;"
+docker exec mcp-postgres-auto psql -U postgres -c "GRANT ALL PRIVILEGES ON DATABASE mcp_test_db TO test_user;"
+```
+
+### テストカバレッジ
+
+- **単体テスト**: 設定、プロンプト、Docker管理などの個別コンポーネントをテスト
+- **統合テスト**: データベース接続、CRUD操作、テーブル管理、トランザクションなどをテスト
+- **テストマーカー**: `@pytest.mark.integration` で統合テストをマーク
+
+### テスト構成
+
+- **テスト設定**: `test/conftest.py` で環境変数とフィクスチャを定義
+- **テストデータ**: 各テスト実行前にデータベースが自動的にクリーンアップ
+- **エラーハンドリング**: 無効な入力やエラー条件をテスト
+
+### トラブルシューティング
+
+1. **統合テストがスキップされる場合**:
+   - 環境変数 `RUN_INTEGRATION_TESTS=1` が設定されているか確認
+   - PostgreSQLデータベースが実行中か確認
+   - テストユーザーの権限を確認
+
+2. **データベース接続エラー**:
+   - ポート番号が正しいか確認（デフォルト: 5432）
+   - ファイアウォール設定を確認
+   - データベースが外部接続を許可しているか確認
+
+3. **権限エラー**:
+   - テストユーザーにSUPERUSER権限が必要
+   - データベースへの完全なアクセス権限が必要
+
+詳細なテスト情報については、[テストガイド](docs/testing-and-qa.md)を参照してください。
+
 ## ライセンス
 
 Apache 2.0
