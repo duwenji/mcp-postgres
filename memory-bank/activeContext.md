@@ -16,6 +16,28 @@
   - バッチファイルのUTF-8エンコーディング対応（`chcp 65001`の追加）
   - PythonスクリプトのUTF-8出力設定（`PYTHONIOENCODING=utf-8`）
   - 標準出力エンコーディングの明示的設定
+- **MCPサーバーのライフサイクル管理改善（lifespan導入）**
+  - lifespanコンテキストマネージャによるサーバーライフサイクル管理
+  - データベース接続プールのライフサイクル管理改善
+  - グレースフルシャットダウンの実装
+  - ヘルスチェック機能の追加
+- **データベース接続アーキテクチャの改善**
+  - ConnectionPoolManagerクラスの拡張（クエリ実行機能の追加）
+  - DatabaseConnectionクラスの削除（冗長性の排除）
+  - DatabaseManagerクラスの更新（pool_managerへの参照変更）
+  - グローバルな接続プールマネージャーの導入
+  - 他のファイルの参照更新（main.py, crud_tools.py, schema_tools.py）
+  - テストファイルの更新
+  - **DatabaseManagerのシンプル化**
+    - `_owns_pool_manager`フラグの削除
+    - `disconnect()`メソッドの簡素化（プールを閉じない）
+    - グローバルプールマネージャーとの統合の改善
+  - **execute_queryの完全なDatabaseManagerへの移動（オプション2）**
+    - ConnectionPoolManagerから`_execute_query`メソッドを完全に削除
+    - DatabaseManagerに直接クエリ実行ロジックを実装（`_execute_query`メソッド）
+    - DatabaseManagerの他のメソッドを新しいクエリ実行ロジックに更新
+    - 他のファイルの参照更新（schema_tools.py）
+    - テストの更新
 
 ## 次のステップ
 - 既存機能の安定化とパフォーマンス最適化
@@ -37,6 +59,23 @@
 - Docker自動構築が開発効率を大幅に向上
 - 構造化ロギングがデバッグと監視に有効
 - Windows環境での日本語文字化け問題は`chcp 65001`とUTF-8明示設定で解決可能
+- lifespan管理の導入によりサーバーの信頼性と保守性が向上
+- 接続プール管理によりデータベース接続の効率性が改善
+- DatabaseConnectionクラスの一元化によりコードの簡素化と保守性が向上
+- **接続プールアーキテクチャの改善により、コードの重複が排除され、保守性が向上**
+  - ConnectionPoolManagerにクエリ実行機能を統合
+  - DatabaseConnectionクラスの削除によるシンプル化
+  - グローバルプールマネージャーの導入による接続共有の効率化
+  - テストの更新により互換性を確保
+  - **DatabaseManagerのシンプル化により、所有権管理の複雑さが排除**
+    - `_owns_pool_manager`フラグの削除でコードが簡潔に
+    - `disconnect()`メソッドの簡素化でグローバルプール管理が明確に
+    - 外部からpool_managerを受け取る設計で責任の分離が明確に
+  - **execute_queryの完全統合により、責任の分離が明確化**
+    - ConnectionPoolManager：純粋な接続プール管理のみ
+    - DatabaseManager：クエリ実行と高レベル操作のすべてを担当
+    - コードの重複排除と保守性の向上
+    - ユーザーはDatabaseManagerだけを使用すればよいシンプルな設計
 
 ## 保留中のTODO事項
 
@@ -45,6 +84,11 @@
 - [ ] パフォーマンスベンチマークの実施
 
 ### 優先度: 中
+- [x] **MCPサーバーのライフサイクル管理改善（lifespan導入）**
+  - lifespanコンテキストマネージャによるサーバーライフサイクル管理
+  - データベース接続プールのライフサイクル管理改善
+  - グレースフルシャットダウンの実装
+  - ヘルスチェック機能の追加
 - [ ] **PostgreSQLパフォーマンス監視システムの実装**
   - PostgreSQLの`postgresql.conf`設定を活用した低速クエリ検出
   - ログ監視サービスによるリアルタイム監視

@@ -3,9 +3,13 @@ Pytest configuration for PostgreSQL MCP Server tests
 """
 
 import os
+import sys
 import pytest
 import asyncio
 from typing import Dict, Any
+
+# Add src directory to Python path for imports
+sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "src"))
 
 # Configure test environment
 os.environ["POSTGRES_HOST"] = os.getenv("POSTGRES_HOST", "localhost")
@@ -104,6 +108,14 @@ def clean_test_database(test_database_config):
 
 def pytest_configure(config):
     """Configure pytest."""
+    import sys
+    import os
+
+    # Add src directory to Python path for imports
+    src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "src"))
+    if src_path not in sys.path:
+        sys.path.insert(0, src_path)
+
     config.addinivalue_line(
         "markers", "integration: mark test as integration test (requires database)"
     )

@@ -6,8 +6,8 @@ import logging
 from typing import Any, Dict, List, Optional, Callable, Coroutine
 from mcp import Tool
 
-from ..database import DatabaseManager, DatabaseError
-from ..config import load_config
+from ..database import DatabaseError
+from ..shared import get_database_manager
 
 logger = logging.getLogger(__name__)
 
@@ -219,16 +219,8 @@ async def handle_create_entity(table_name: str, data: Dict[str, Any]) -> Dict[st
         f"CRUD_TOOL - create_entity - Table: {table_name}, Data keys: {list(data.keys())}"
     )
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.create_entity(table_name, data)
-
-        # Disconnect from database
-        db_manager.disconnect()
 
         logger.info(
             f"CRUD_TOOL_SUCCESS - create_entity - Table: {table_name}, Result: {result.get('success', False)}"
@@ -262,12 +254,7 @@ async def handle_read_entity(
         f"CRUD_TOOL - read_entity - Table: {table_name}, Conditions: {conditions}, Limit: {limit}, Offset: {offset}"
     )
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.read_entity(
             table_name=table_name,
             conditions=conditions,
@@ -279,10 +266,7 @@ async def handle_read_entity(
             group_by=group_by,
         )
 
-        # Disconnect from database
-        db_manager.disconnect()
-
-        row_count = len(result.get("entities", [])) if result.get("success") else 0
+        row_count = len(result.get("results", [])) if result.get("success") else 0
         logger.info(
             f"CRUD_TOOL_SUCCESS - read_entity - Table: {table_name}, Rows returned: {row_count}"
         )
@@ -309,16 +293,8 @@ async def handle_update_entity(
         f"Conditions: {conditions}, Updates keys: {list(updates.keys())}"
     )
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.update_entity(table_name, conditions, updates)
-
-        # Disconnect from database
-        db_manager.disconnect()
 
         logger.info(
             f"CRUD_TOOL_SUCCESS - update_entity - Table: {table_name}, Result: {result.get('success', False)}"
@@ -345,16 +321,8 @@ async def handle_delete_entity(
         f"CRUD_TOOL - delete_entity - Table: {table_name}, Conditions: {conditions}"
     )
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.delete_entity(table_name, conditions)
-
-        # Disconnect from database
-        db_manager.disconnect()
 
         logger.info(
             f"CRUD_TOOL_SUCCESS - delete_entity - Table: {table_name}, Result: {result.get('success', False)}"
@@ -382,16 +350,8 @@ async def handle_batch_create_entities(
         f"CRUD_TOOL - batch_create_entities - Table: {table_name}, Records: {len(data_list)}"
     )
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.batch_create_entities(table_name, data_list)
-
-        # Disconnect from database
-        db_manager.disconnect()
 
         logger.info(
             f"CRUD_TOOL_SUCCESS - batch_create_entities - Table: {table_name}, Result: {result.get('success', False)}"
@@ -420,18 +380,10 @@ async def handle_batch_update_entities(
         f"CRUD_TOOL - batch_update_entities - Table: {table_name}, Operations: {len(conditions_list)}"
     )
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.batch_update_entities(
             table_name, conditions_list, updates_list
         )
-
-        # Disconnect from database
-        db_manager.disconnect()
 
         logger.info(
             f"CRUD_TOOL_SUCCESS - batch_update_entities - Table: {table_name}, Result: {result.get('success', False)}"
@@ -458,16 +410,8 @@ async def handle_batch_delete_entities(
         f"CRUD_TOOL - batch_delete_entities - Table: {table_name}, Operations: {len(conditions_list)}"
     )
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.batch_delete_entities(table_name, conditions_list)
-
-        # Disconnect from database
-        db_manager.disconnect()
 
         logger.info(
             f"CRUD_TOOL_SUCCESS - batch_delete_entities - Table: {table_name}, Result: {result.get('success', False)}"
@@ -526,14 +470,8 @@ async def handle_execute_sql_query(
         f"Params keys: {param_keys}, Limit: {limit}"
     )
 
-    db_manager = None
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.execute_query(query, params, limit)
 
         row_count = result.get("row_count", 0) if result.get("success") else 0
@@ -548,10 +486,6 @@ async def handle_execute_sql_query(
     except Exception as e:
         logger.error(f"CRUD_TOOL_ERROR - execute_sql_query - Unexpected error: {e}")
         return {"success": False, "error": f"Internal server error: {str(e)}"}
-    finally:
-        # Always disconnect from database
-        if db_manager:
-            db_manager.disconnect()
 
 
 # Tool registry

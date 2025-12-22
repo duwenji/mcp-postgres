@@ -167,11 +167,11 @@ async def handle_begin_change_session(
         if backup_enabled:
             config = load_config()
             db_manager = DatabaseManager(config.postgres)
-            db_manager.connection.connect()
+            db_manager.connect()
 
             try:
                 # Start transaction
-                db_manager.connection.execute_query("BEGIN;")
+                db_manager.execute_query("BEGIN;")
                 session["transaction_started"] = True
 
                 # Create initial backup
@@ -184,10 +184,10 @@ async def handle_begin_change_session(
                 }
                 session["backups"].append(backup)
 
-                db_manager.connection.disconnect()
+                db_manager.disconnect()
 
             except Exception as e:
-                db_manager.connection.disconnect()
+                db_manager.disconnect()
                 raise e
 
         logger.info(f"Started schema change session: {session_id}")
@@ -256,12 +256,12 @@ async def handle_apply_schema_changes(
 
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        db_manager.connection.connect()
+        db_manager.connect()
 
         try:
             # Ensure we're in a transaction
             if not session["transaction_started"]:
-                db_manager.connection.execute_query("BEGIN;")
+                db_manager.execute_query("BEGIN;")
                 session["transaction_started"] = True
 
             executed_statements = []
@@ -280,7 +280,7 @@ async def handle_apply_schema_changes(
                         continue
 
                     # Execute statement
-                    result = db_manager.connection.execute_query(statement)
+                    result = db_manager.execute_query(statement)
                     executed_statements.append(
                         {
                             "statement": statement,
@@ -322,7 +322,7 @@ async def handle_apply_schema_changes(
 
             if errors:
                 # Rollback transaction on errors
-                db_manager.connection.execute_query("ROLLBACK;")
+                db_manager.execute_query("ROLLBACK;")
                 session["transaction_started"] = False
 
                 return {
@@ -341,11 +341,11 @@ async def handle_apply_schema_changes(
                 }
 
         except Exception as e:
-            db_manager.connection.execute_query("ROLLBACK;")
+            db_manager.execute_query("ROLLBACK;")
             session["transaction_started"] = False
             raise e
         finally:
-            db_manager.connection.disconnect()
+            db_manager.disconnect()
 
     except DatabaseError as e:
         return {"success": False, "error": str(e)}
@@ -366,12 +366,12 @@ async def handle_rollback_schema_changes(
 
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        db_manager.connection.connect()
+        db_manager.connect()
 
         try:
             if session["transaction_started"]:
                 # Rollback current transaction
-                db_manager.connection.execute_query("ROLLBACK;")
+                db_manager.execute_query("ROLLBACK;")
                 session["transaction_started"] = False
 
             # Note: In a real implementation, we would restore from backup
@@ -399,7 +399,7 @@ async def handle_rollback_schema_changes(
         except Exception as e:
             raise e
         finally:
-            db_manager.connection.disconnect()
+            db_manager.disconnect()
 
     except DatabaseError as e:
         return {"success": False, "error": str(e)}
@@ -437,12 +437,12 @@ async def handle_commit_schema_changes(session_id: str) -> Dict[str, Any]:
 
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        db_manager.connection.connect()
+        db_manager.connect()
 
         try:
             if session["transaction_started"]:
                 # Commit transaction
-                db_manager.connection.execute_query("COMMIT;")
+                db_manager.execute_query("COMMIT;")
                 session["transaction_started"] = False
 
             # Mark session as completed
@@ -459,11 +459,11 @@ async def handle_commit_schema_changes(session_id: str) -> Dict[str, Any]:
 
         except Exception as e:
             # Rollback on commit failure
-            db_manager.connection.execute_query("ROLLBACK;")
+            db_manager.execute_query("ROLLBACK;")
             session["transaction_started"] = False
             raise e
         finally:
-            db_manager.connection.disconnect()
+            db_manager.disconnect()
 
     except DatabaseError as e:
         return {"success": False, "error": str(e)}
@@ -483,24 +483,26 @@ async def _validate_schema_changes(db_manager: DatabaseManager) -> Dict[str, Any
         if not tables_result["success"]:
             errors.append("Cannot list tables after changes")
 
-        # Check if we can describe a sample table
-        if tables_result["success"] and tables_result["tables"]:
-            sample_table = tables_result["tables"][0]
-            # Use direct query to get table schema instead of missing method
-            schema_query = """
-            SELECT column_name, data_type, is_nullable
-            FROM information_schema.columns
-            WHERE table_schema = 'public' AND table_name = %s
-            ORDER BY ordinal_position
-            """
-            try:
-                schema_result = db_manager.connection.execute_query(
-                    schema_query, {"table_name": sample_table}
-                )
-                if not schema_result:
+            # Check if we can describe a sample table
+            if tables_result["success"] and tables_result["tables"]:
+                sample_table = tables_result["tables"][0]
+                # Use direct query to get table schema instead of missing method
+                schema_query = """
+                SELECT column_name, data_type, is_nullable
+                FROM information_schema.columns
+                WHERE table_schema = 'public' AND table_name = %s
+                ORDER BY ordinal_position
+                """
+                try:
+                    schema_result = db_manager.execute_query(
+                        schema_query, {"table_name": sample_table}
+                    )
+                    if not schema_result["success"] or not schema_result["data"]:
+                        errors.append(
+                            f"Cannot describe table {sample_table} after changes"
+                        )
+                except Exception:
                     errors.append(f"Cannot describe table {sample_table} after changes")
-            except Exception:
-                errors.append(f"Cannot describe table {sample_table} after changes")
 
     except Exception as e:
         errors.append(f"Validation error: {str(e)}")

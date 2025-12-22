@@ -6,8 +6,8 @@ import logging
 from typing import Any, Dict, List, Callable, Coroutine
 from mcp import Tool
 
-from ..database import DatabaseManager, DatabaseError
-from ..config import load_config
+from ..database import DatabaseError
+from ..shared import get_database_manager
 
 logger = logging.getLogger(__name__)
 
@@ -62,18 +62,9 @@ get_database_info = Tool(
 async def handle_get_tables(schema: str = "public") -> Dict[str, Any]:
     """Handle get_tables tool execution"""
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connection.connect()
-
+        db_manager = get_database_manager()
         # Use existing get_tables method
         result = db_manager.get_tables()
-
-        # Disconnect from database
-        db_manager.connection.disconnect()
-
         return result
 
     except DatabaseError as e:
@@ -88,11 +79,7 @@ async def handle_get_table_schema(
 ) -> Dict[str, Any]:
     """Handle get_table_schema tool execution"""
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connection.connect()
+        db_manager = get_database_manager()
 
         # Query to get table schema information
         query = """
@@ -111,7 +98,7 @@ async def handle_get_table_schema(
 
         logger.info(f"Executing table schema query for table: {table_name}")
         try:
-            results = db_manager.connection.execute_query(
+            results = db_manager._execute_query(
                 query, {"schema": schema, "table_name": table_name}
             )
             logger.info(
@@ -140,7 +127,7 @@ async def handle_get_table_schema(
 
         logger.info(f"Executing constraints query for table: {table_name}")
         try:
-            constraints = db_manager.connection.execute_query(
+            constraints = db_manager._execute_query(
                 constraints_query, {"schema": schema, "table_name": table_name}
             )
             logger.info(
@@ -151,9 +138,6 @@ async def handle_get_table_schema(
         except Exception as constraints_error:
             logger.error(f"Constraints query execution failed: {constraints_error}")
             constraints = []
-
-        # Disconnect from database
-        db_manager.connection.disconnect()
 
         # Ensure results are properly formatted as lists
         columns_list = []
@@ -207,24 +191,20 @@ async def handle_get_table_schema(
 async def handle_get_database_info() -> Dict[str, Any]:
     """Handle get_database_info tool execution"""
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connection.connect()
+        db_manager = get_database_manager()
 
         # Get database version
-        version_result = db_manager.connection.execute_query("SELECT version();")
+        version_result = db_manager._execute_query("SELECT version();")
         version = version_result[0]["version"] if version_result else "Unknown"
 
         # Get database name and current user
-        db_info_result = db_manager.connection.execute_query(
+        db_info_result = db_manager._execute_query(
             "SELECT current_database(), current_user, current_schema();"
         )
         db_info = db_info_result[0] if db_info_result else {}
 
         # Get database size
-        size_result = db_manager.connection.execute_query(
+        size_result = db_manager._execute_query(
             (
                 "SELECT pg_size_pretty(pg_database_size(current_database())) "
                 "as database_size;"
@@ -233,7 +213,7 @@ async def handle_get_database_info() -> Dict[str, Any]:
         database_size = size_result[0]["database_size"] if size_result else "Unknown"
 
         # Get number of tables
-        tables_count_result = db_manager.connection.execute_query(
+        tables_count_result = db_manager._execute_query(
             (
                 "SELECT COUNT(*) as table_count FROM information_schema.tables "
                 "WHERE table_schema = 'public';"
@@ -242,9 +222,6 @@ async def handle_get_database_info() -> Dict[str, Any]:
         table_count = (
             tables_count_result[0]["table_count"] if tables_count_result else 0
         )
-
-        # Disconnect from database
-        db_manager.connection.disconnect()
 
         return {
             "success": True,

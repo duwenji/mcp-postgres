@@ -6,8 +6,8 @@ import logging
 from typing import Any, Dict, List, Callable, Coroutine
 from mcp import Tool
 
-from ..database import DatabaseManager, DatabaseError
-from ..config import load_config
+from ..database import DatabaseError
+from ..shared import get_database_manager
 
 logger = logging.getLogger(__name__)
 
@@ -166,17 +166,8 @@ async def handle_create_table(
 ) -> Dict[str, Any]:
     """Handle create table tool execution"""
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connection.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.create_table(table_name, columns, if_not_exists)
-
-        # Disconnect from database
-        db_manager.connection.disconnect()
-
         return result
 
     except DatabaseError as e:
@@ -191,17 +182,8 @@ async def handle_alter_table(
 ) -> Dict[str, Any]:
     """Handle alter table tool execution"""
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connection.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.alter_table(table_name, operations)
-
-        # Disconnect from database
-        db_manager.connection.disconnect()
-
         return result
 
     except DatabaseError as e:
@@ -216,17 +198,8 @@ async def handle_drop_table(
 ) -> Dict[str, Any]:
     """Handle drop table tool execution"""
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connection.connect()
-
+        db_manager = get_database_manager()
         result = db_manager.drop_table(table_name, cascade, if_exists)
-
-        # Disconnect from database
-        db_manager.connection.disconnect()
-
         return result
 
     except DatabaseError as e:

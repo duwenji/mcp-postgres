@@ -10,7 +10,7 @@ from typing import Any, Dict, List, Callable, Coroutine
 from mcp import Tool
 
 from ..database import DatabaseManager, DatabaseError
-from ..config import load_config
+from ..shared import get_database_manager
 
 logger = logging.getLogger(__name__)
 
@@ -125,11 +125,7 @@ async def handle_get_multiple_table_schemas(
 ) -> Dict[str, Any]:
     """Handle get_multiple_table_schemas tool execution"""
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connection.connect()
+        db_manager = get_database_manager()
 
         schemas = {}
         for table_name in table_names:
@@ -148,19 +144,20 @@ async def handle_get_multiple_table_schemas(
                 WHERE table_schema = %s AND table_name = %s
                 ORDER BY ordinal_position
                 """
-                results = db_manager.connection.execute_query(
+                results = db_manager.execute_query(
                     query, {"schema": schema, "table_name": table_name}
                 )
-                schemas[table_name] = results
+                schemas[table_name] = (
+                    results["data"]
+                    if results["success"]
+                    else [{"error": "Failed to execute query"}]
+                )
             except Exception as e:
                 logger.warning(f"Failed to get schema for table {table_name}: {e}")
                 schemas[table_name] = [{"error": str(e)}]
 
         # Get table relationships
         relationships = await _analyze_relationships(table_names, db_manager)
-
-        # Disconnect from database
-        db_manager.connection.disconnect()
 
         return {
             "success": True,
@@ -189,16 +186,8 @@ async def handle_get_multiple_table_schemas(
 async def handle_analyze_table_relationships(table_names: List[str]) -> Dict[str, Any]:
     """Handle analyze_table_relationships tool execution"""
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connection.connect()
-
+        db_manager = get_database_manager()
         relationships = await _analyze_relationships(table_names, db_manager)
-
-        # Disconnect from database
-        db_manager.connection.disconnect()
 
         return {
             "success": True,
@@ -219,11 +208,7 @@ async def handle_generate_schema_overview(
     """Handle generate_schema_overview tool execution"""
 
     try:
-        config = load_config()
-        db_manager = DatabaseManager(config.postgres)
-
-        # Connect to database
-        db_manager.connection.connect()
+        db_manager = get_database_manager()
 
         # Get all tables if not specified
         if not include_tables:
@@ -244,17 +229,16 @@ async def handle_generate_schema_overview(
         FROM pg_tables
         WHERE schemaname = 'public'
         """
-        stats_result = db_manager.connection.execute_query(stats_query)
-
-        # Disconnect from database
-        db_manager.connection.disconnect()
+        stats_result = db_manager.execute_query(stats_query)
 
         return {
             "success": True,
             "overview": {
                 "table_count": len(include_tables),
                 "total_size_bytes": (
-                    stats_result[0]["total_size_bytes"] if stats_result else 0
+                    stats_result["data"][0]["total_size_bytes"]
+                    if stats_result["success"] and stats_result["data"]
+                    else 0
                 ),
                 "schemas": schemas_result.get("schemas", {}),
                 "relationships": schemas_result.get("relationships", {}),
@@ -364,10 +348,10 @@ async def _analyze_relationships(
             AND tc.table_name = ANY(%(table_names)s)
         """
 
-        fk_results = db_manager.connection.execute_query(
-            fk_query, {"table_names": table_names}
+        fk_results = db_manager.execute_query(fk_query, {"table_names": table_names})
+        relationships["foreign_keys"] = (
+            fk_results["data"] if fk_results["success"] else []
         )
-        relationships["foreign_keys"] = fk_results
 
         # Analyze potential relationships based on column names
         for table_name in table_names:
@@ -377,9 +361,10 @@ async def _analyze_relationships(
             FROM information_schema.columns
             WHERE table_schema = 'public' AND table_name = %(table_name)s
             """
-            columns = db_manager.connection.execute_query(
+            columns_result = db_manager.execute_query(
                 column_query, {"table_name": table_name}
             )
+            columns = columns_result["data"] if columns_result["success"] else []
 
             # Simple heuristic: look for common naming patterns
             for column in columns:

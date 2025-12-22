@@ -8,7 +8,7 @@ sys.path.insert(0, os.path.join(os.path.dirname(__file__), "..", "..", "src"))
 from mcp_postgres_duwenji.config import PostgresConfig  # noqa: E402
 from mcp_postgres_duwenji.database import (  # noqa: E402
     DatabaseManager,
-    DatabaseConnection,
+    ConnectionPoolManager,
     DatabaseError,
 )
 
@@ -25,10 +25,10 @@ class TestDatabaseConnection:
     def test_connection_success(self, test_database_config):
         """Test successful database connection"""
         config = PostgresConfig(**test_database_config)
-        connection = DatabaseConnection(config)
+        pool_manager = ConnectionPoolManager(config)
 
         # Test connection
-        result = connection.test_connection()
+        result = pool_manager.test_connection()
         assert result is True
 
     def test_connection_failure(self):
@@ -40,10 +40,10 @@ class TestDatabaseConnection:
             username="invalid-user",
             password="invalid-pass",
         )
-        connection = DatabaseConnection(config)
+        pool_manager = ConnectionPoolManager(config)
 
         # Test connection should fail
-        result = connection.test_connection()
+        result = pool_manager.test_connection()
         assert result is False
 
 
@@ -55,12 +55,13 @@ class TestDatabaseCRUD:
     def db_manager(self, test_database_config, clean_test_database):
         """Create database manager for tests"""
         config = PostgresConfig(**test_database_config)
-        manager = DatabaseManager(config)
+        pool_manager = ConnectionPoolManager(config)
+        manager = DatabaseManager(config, pool_manager)
         # Ensure connection is established
-        manager.connection.connect()
+        manager.connect()
         yield manager
         # Cleanup
-        manager.connection.disconnect()
+        manager.disconnect()
 
     def test_create_user(self, db_manager):
         """Test creating a new user"""
@@ -141,10 +142,11 @@ class TestDatabaseQueries:
     def db_manager(self, test_database_config, clean_test_database):
         """Create database manager for tests"""
         config = PostgresConfig(**test_database_config)
-        manager = DatabaseManager(config)
-        manager.connection.connect()
+        pool_manager = ConnectionPoolManager(config)
+        manager = DatabaseManager(config, pool_manager)
+        manager.connect()
         yield manager
-        manager.connection.disconnect()
+        manager.disconnect()
 
     def test_get_tables(self, db_manager):
         """Test getting list of tables"""
@@ -161,12 +163,15 @@ class TestDatabaseQueries:
     def test_execute_custom_query(self, db_manager):
         """Test executing custom SQL queries"""
         query = "SELECT COUNT(*) as user_count FROM users"
-        result = db_manager.connection.execute_query(query)
+        result = db_manager.execute_query(query)
 
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert "user_count" in result[0]
-        assert isinstance(result[0]["user_count"], int)
+        assert isinstance(result, dict)
+        assert result["success"] is True
+        assert "data" in result
+        assert isinstance(result["data"], list)
+        assert len(result["data"]) == 1
+        assert "user_count" in result["data"][0]
+        assert isinstance(result["data"][0]["user_count"], int)
 
     def test_execute_insert_query(self, db_manager):
         """Test executing INSERT query"""
@@ -181,13 +186,16 @@ class TestDatabaseQueries:
             "description": "Test product for integration testing",
         }
 
-        result = db_manager.connection.execute_query(query, params)
+        result = db_manager.execute_query(query, params)
 
-        assert isinstance(result, list)
-        assert len(result) == 1
-        assert result[0]["name"] == "Test Product"
+        assert isinstance(result, dict)
+        assert result["success"] is True
+        assert "data" in result
+        assert isinstance(result["data"], list)
+        assert len(result["data"]) == 1
+        assert result["data"][0]["name"] == "Test Product"
         # PostgreSQL returns DECIMAL type, so we need to convert for comparison
-        assert float(result[0]["price"]) == 49.99
+        assert float(result["data"][0]["price"]) == 49.99
 
 
 @pytest.mark.integration
@@ -198,10 +206,11 @@ class TestDatabaseErrorHandling:
     def db_manager(self, test_database_config, clean_test_database):
         """Create database manager for tests"""
         config = PostgresConfig(**test_database_config)
-        manager = DatabaseManager(config)
-        manager.connection.connect()
+        pool_manager = ConnectionPoolManager(config)
+        manager = DatabaseManager(config, pool_manager)
+        manager.connect()
         yield manager
-        manager.connection.disconnect()
+        manager.disconnect()
 
     def test_invalid_table_name(self, db_manager):
         """Test operations with invalid table name"""
@@ -224,7 +233,7 @@ class TestDatabaseErrorHandling:
         query = "SELECT * FROM invalid_syntax"
 
         with pytest.raises(DatabaseError):
-            db_manager.connection.execute_query(query)
+            db_manager.execute_query(query)
 
     def test_empty_conditions(self, db_manager):
         """Test operations with empty conditions"""
@@ -243,10 +252,11 @@ class TestDatabaseTransactions:
     def db_manager(self, test_database_config, clean_test_database):
         """Create database manager for tests"""
         config = PostgresConfig(**test_database_config)
-        manager = DatabaseManager(config)
-        manager.connection.connect()
+        pool_manager = ConnectionPoolManager(config)
+        manager = DatabaseManager(config, pool_manager)
+        manager.connect()
         yield manager
-        manager.connection.disconnect()
+        manager.disconnect()
 
     def test_transaction_rollback(self, db_manager):
         """Test that failed transactions are rolled back"""
@@ -276,10 +286,11 @@ class TestTableManagement:
     def db_manager(self, test_database_config, clean_test_database):
         """Create database manager for tests"""
         config = PostgresConfig(**test_database_config)
-        manager = DatabaseManager(config)
-        manager.connection.connect()
+        pool_manager = ConnectionPoolManager(config)
+        manager = DatabaseManager(config, pool_manager)
+        manager.connect()
         yield manager
-        manager.connection.disconnect()
+        manager.disconnect()
 
     def test_create_table(self, db_manager):
         """Test creating a new table"""

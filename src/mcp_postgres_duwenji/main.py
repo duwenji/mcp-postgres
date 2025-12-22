@@ -4,15 +4,20 @@ Main entry point for PostgreSQL MCP Server
 
 import asyncio
 import logging
-import sys
-from typing import Any, Dict, List
+import signal
+import datetime
+from contextlib import asynccontextmanager
+from typing import Any, Dict, List, Optional
 from mcp.server import Server
 from mcp.server.stdio import stdio_server
 
-from .config import load_config
-from .database import DatabaseManager
+from .config import load_config, ServerConfig
+from .database import DatabaseManager, ConnectionPoolManager
 from .docker_manager import DockerManager
-from .tools.crud_tools import get_crud_tools, get_crud_handlers
+from .tools.crud_tools import (
+    get_crud_tools,
+    get_crud_handlers,
+)
 from .tools.schema_tools import get_schema_tools, get_schema_handlers
 from .tools.table_tools import get_table_tools, get_table_handlers
 from .tools.sampling_tools import get_sampling_tools, get_sampling_handlers
@@ -115,61 +120,187 @@ logger = None
 protocol_logger = None
 
 # Global configuration - loaded once in main()
-global_config = None
+global_config: Optional[ServerConfig] = None
+
+# Global connection pool manager for connection pooling
+global_pool_manager: Optional[ConnectionPoolManager] = None
+
+# Graceful shutdown flag
+shutdown_event = asyncio.Event()
+
+
+def setup_signal_handlers() -> None:
+    """Setup signal handlers for graceful shutdown"""
+
+    def signal_handler(signum: int, frame: Any) -> None:
+        # signal_handler may be called before main() initializes logger
+        if logger is not None:
+            logger.info(f"Received signal {signum}, initiating graceful shutdown...")
+        shutdown_event.set()
+
+    signal.signal(signal.SIGINT, signal_handler)
+    signal.signal(signal.SIGTERM, signal_handler)
+
+
+async def graceful_shutdown() -> None:
+    """Perform graceful shutdown of server resources"""
+    # logger is initialized in main() before this function is called
+    if logger is None:
+        # If logger is not initialized, we cannot log, but we should still proceed with shutdown
+        print("Performing graceful shutdown (logger not initialized)...")
+    else:
+        logger.info("Performing graceful shutdown...")
+
+    # Close database connections
+    if global_pool_manager:
+        try:
+            global_pool_manager.disconnect()
+            if logger:
+                logger.info("Database connection pool closed")
+        except Exception as e:
+            if logger:
+                logger.error(f"Error closing database connection pool: {e}")
+
+    # Wait for ongoing operations to complete (with timeout)
+    try:
+        await asyncio.wait_for(shutdown_event.wait(), timeout=10.0)
+        if logger:
+            logger.info("All ongoing operations completed")
+    except asyncio.TimeoutError:
+        if logger:
+            logger.warning("Timeout waiting for operations to complete")
+
+    if logger:
+        logger.info("Graceful shutdown completed")
+
+
+async def health_check() -> Dict[str, Any]:
+    """
+    Perform health check of server components
+
+    Returns:
+        Dictionary with health status information
+    """
+    # Check if logger is initialized
+    if logger is None:
+        # If logger is not initialized, we cannot log, but we can still perform health check
+        print("Health check called (logger not initialized)...")
+
+    health_status = {
+        "status": "healthy",
+        "timestamp": datetime.datetime.now().isoformat(),
+        "components": {},
+    }
+
+    # Check database connection
+    if global_pool_manager:
+        try:
+            db_healthy = global_pool_manager.test_connection()
+            health_status["components"]["database"] = {
+                "status": "healthy" if db_healthy else "unhealthy",
+                "connection_test": db_healthy,
+            }
+            if not db_healthy:
+                health_status["status"] = "unhealthy"
+        except Exception as e:
+            health_status["components"]["database"] = {
+                "status": "error",
+                "error": str(e),
+            }
+            health_status["status"] = "unhealthy"
+    else:
+        health_status["components"]["database"] = {"status": "not_initialized"}
+        health_status["status"] = "unhealthy"
+
+    return health_status
+
+
+@asynccontextmanager
+async def lifespan(server: Server):
+    """
+    Lifespan context manager for MCP server lifecycle management
+
+    Note: Initialization is now done in main() function.
+    This lifespan only handles graceful shutdown.
+    """
+    try:
+        # Startup phase - already done in main()
+        assert logger is not None, "logger should be initialized"
+        logger.info("PostgreSQL MCP Server lifespan started")
+
+        # Yield control to server runtime
+        yield
+
+    except Exception as e:
+        assert logger is not None, "logger should be initialized"
+        logger.error(f"Server runtime error: {e}")
+        raise
+    finally:
+        # Shutdown phase
+        assert logger is not None, "logger should be initialized"
+        logger.info("Starting PostgreSQL MCP Server shutdown...")
+        await graceful_shutdown()
+        logger.info("PostgreSQL MCP Server shutdown completed")
 
 
 async def main() -> None:
     """Main entry point for the MCP server"""
-    try:
-        # Load configuration once and store globally
-        global global_config
-        global_config = load_config()
+    # Load configuration and setup logging at the start
+    global global_config, logger, protocol_logger, global_pool_manager
 
-        # ログ設定を再適用（環境変数の設定を反映）
-        global logger, protocol_logger
-        try:
-            logger, protocol_logger = setup_logging(
-                log_level=global_config.log_level, log_dir=global_config.log_dir
-            )
-            logger.info(f"Configuration loaded successfully. config={global_config}")
-        except Exception as log_error:
-            # ログ設定失敗時のフォールバック
-            print(f"Failed to setup logging: {log_error}", file=sys.stderr)
-            print(
-                f"Configuration loaded successfully. config={global_config}",
-                file=sys.stderr,
-            )
-            import traceback
+    # Load configuration
+    global_config = load_config()
 
-            print(f"Server error traceback: {traceback.format_exc()}")
-            sys.exit(1)
+    # Setup logging
+    logger, protocol_logger = setup_logging(
+        log_level=global_config.log_level, log_dir=global_config.log_dir
+    )
 
-        # Handle Docker auto-setup if enabled
-        if global_config.docker.enabled:
-            logger.info("Docker auto-setup enabled, starting PostgreSQL container...")
-            docker_manager = DockerManager(global_config.docker)
+    logger.info(f"Configuration loaded successfully. config={global_config}")
 
-            if docker_manager.is_docker_available():
-                result = docker_manager.start_container()
-                if result["success"]:
-                    logger.info(f"PostgreSQL container started successfully: {result}")
-                else:
-                    logger.error(
-                        f"Failed to start PostgreSQL container: {result.get('error', 'Unknown error')}"
-                    )
-                    # Continue without Docker setup - user might have external PostgreSQL
+    # Handle Docker auto-setup if enabled
+    if global_config.docker.enabled:
+        logger.info("Docker auto-setup enabled, starting PostgreSQL container...")
+        docker_manager = DockerManager(global_config.docker)
+
+        if docker_manager.is_docker_available():
+            result = docker_manager.start_container()
+            if result["success"]:
+                logger.info(f"PostgreSQL container started successfully: {result}")
             else:
-                logger.warning(
-                    "Docker auto-setup enabled but Docker is not available. Using existing PostgreSQL connection."
+                logger.error(
+                    f"Failed to start PostgreSQL container: {result.get('error', 'Unknown error')}"
                 )
+                # Continue without Docker setup - user might have external PostgreSQL
+        else:
+            logger.warning(
+                "Docker auto-setup enabled but Docker is not available. Using existing PostgreSQL connection."
+            )
 
-    except Exception as e:
-        # 設定ロードエラー時は標準エラー出力に出力
-        print(f"Failed to load configuration: {e}", file=sys.stderr)
-        sys.exit(1)
+    # Initialize global connection pool manager
+    logger.info("Initializing connection pool manager...")
+    global_pool_manager = ConnectionPoolManager(global_config.postgres)
 
-    # Create MCP server with sampling/elicitation capabilities
-    server = Server("postgres-mcp-server")
+    # Test database connection
+    if global_pool_manager.test_connection():
+        logger.info("Connection pool manager initialized successfully")
+    else:
+        logger.error("Failed to initialize connection pool manager")
+        raise RuntimeError("Database connection failed")
+
+    # Set global connection pool manager for sharing across tools
+    from .shared import set_global_db_connection
+
+    set_global_db_connection(global_pool_manager, global_config)
+    logger.info("Global connection pool manager set for tool sharing")
+
+    # Setup signal handlers for graceful shutdown
+    setup_signal_handlers()
+
+    logger.info("PostgreSQL MCP Server startup completed")
+
+    # Create MCP server with lifespan management
+    server = Server("postgres-mcp-server", lifespan=lifespan)
 
     # Get tools and handlers
     crud_tools = get_crud_tools()
@@ -209,10 +340,23 @@ async def main() -> None:
 
     # Register tool handlers
     @server.call_tool()
-    async def handle_tool_call(name: str, arguments: dict) -> Dict[str, Any]:
+    async def handle_tool_call(name: str, arguments: dict) -> Dict[str, Any]:  # type: ignore[no-untyped-def]
         """Handle tool execution requests"""
-        # 詳細な入力ログ
+
+        # global_config is initialized in main() before server starts
+        assert logger is not None, "logger should be initialized"
+        assert global_config is not None, "global_config should be initialized"
         logger.info(f"TOOL_INPUT - Tool: {name}, Arguments: {arguments}")
+
+        # Handle health check tool
+        if name == "health_check":
+            try:
+                result = await health_check()
+                logger.info(f"HEALTH_CHECK_RESULT - Status: {result['status']}")
+                return {"success": True, "health": result}
+            except Exception as e:
+                logger.error(f"HEALTH_CHECK_ERROR - Error: {e}")
+                return {"success": False, "error": str(e)}
 
         if name in all_handlers:
             handler = all_handlers[name]
@@ -254,7 +398,8 @@ async def main() -> None:
                     "code": -32601,
                     "message": f"Method not found: {name}",
                     "data": {
-                        "available_methods": list(all_handlers.keys()),
+                        "available_methods": list(all_handlers.keys())
+                        + ["health_check"],
                         "server_type": "PostgreSQL MCP Server",
                     },
                 },
@@ -263,10 +408,20 @@ async def main() -> None:
     # Register tools via list_tools handler
     @server.list_tools()
     async def handle_list_tools() -> List[Tool]:
-        """List available tools"""
-        tool_count = len(all_tools)
-        logger.info(f"TOOL_LIST - Listing {tool_count} available tools")
-        return all_tools
+        """List available tools including health check"""
+        # Check if logger is initialized
+        if logger is not None:
+            tool_count = len(all_tools) + 1  # +1 for health check
+            logger.info(f"TOOL_LIST - Listing {tool_count} available tools")
+
+        # Create health check tool definition
+        health_tool = Tool(
+            name="health_check",
+            description="Check the health status of the PostgreSQL MCP Server",
+            inputSchema={"type": "object", "properties": {}, "required": []},
+        )
+
+        return all_tools + [health_tool]
 
     # Register resources
     database_resources = get_database_resources()
@@ -276,20 +431,30 @@ async def main() -> None:
     @server.list_resources()
     async def handle_list_resources() -> List[Resource]:
         """List available resources"""
-        logger.info("RESOURCE_LIST - Listing available resources")
+        # Check if logger is initialized
+        if logger is not None:
+            logger.info("RESOURCE_LIST - Listing available resources")
         resources = database_resources.copy()
 
         # Add dynamic table schema resources
         try:
-            db_manager = DatabaseManager(global_config.postgres)
-            db_manager.connection.connect()
+            if global_config is None:
+                raise RuntimeError("global_config should be initialized")
+            db_manager = DatabaseManager(global_config.postgres, global_pool_manager)
+            db_manager.connect()
             tables_result = db_manager.get_tables()
-            db_manager.connection.disconnect()
+            db_manager.disconnect()
 
             if tables_result["success"]:
-                table_count = len(tables_result["tables"])
-                logger.info(f"RESOURCE_LIST - Found {table_count} tables in database")
-                for table_name in tables_result["tables"]:
+                # Convert to List[str] to fix mypy error
+                tables_data = tables_result["tables"]
+                table_list: List[str] = list(tables_data)  # type: ignore[index]
+                table_count = len(table_list)
+                if logger is not None:
+                    logger.info(
+                        f"RESOURCE_LIST - Found {table_count} tables in database"
+                    )
+                for table_name in table_list:
                     resources.append(
                         Resource(
                             uri=f"database://schema/{table_name}",  # type: ignore
@@ -299,26 +464,36 @@ async def main() -> None:
                         )
                     )
             else:
-                logger.warning(
-                    f"RESOURCE_LIST - Failed to get tables: {tables_result.get('error', 'Unknown error')}"
-                )
+                if logger is not None:
+                    logger.warning(
+                        f"RESOURCE_LIST - Failed to get tables: {tables_result.get('error', 'Unknown error')}"
+                    )
         except Exception as e:
-            logger.error(f"RESOURCE_LIST_ERROR - Error listing table resources: {e}")
+            if logger is not None:
+                logger.error(
+                    f"RESOURCE_LIST_ERROR - Error listing table resources: {e}"
+                )
 
         total_resources = len(resources)
-        logger.info(f"RESOURCE_LIST - Total resources available: {total_resources}")
+        if logger is not None:
+            logger.info(f"RESOURCE_LIST - Total resources available: {total_resources}")
         return resources
 
     @server.list_resource_templates()
-    async def handle_list_resource_templates() -> list[types.ResourceTemplate]:
+    async def handle_list_resource_templates() -> List[types.ResourceTemplate]:
         """List available resource templates"""
-        logger.info("RESOURCE_TEMPLATE_LIST - Listing resource templates")
+        # Check if logger is initialized
+        if logger is not None:
+            logger.info("RESOURCE_TEMPLATE_LIST - Listing resource templates")
         # Currently no resource templates implemented
         return []
 
     @server.read_resource()
     async def handle_read_resource(uri: str) -> str:
         """Read resource content"""
+        # Assert logger is initialized (for mypy type narrowing)
+        assert logger is not None, "logger should be initialized"
+
         # Convert uri to string if it's not already
         uri_str = str(uri)
         logger.info(f"RESOURCE_READ - Reading resource: {uri_str}")
@@ -361,15 +536,19 @@ async def main() -> None:
     @server.list_prompts()
     async def handle_list_prompts(request: ListPromptsRequest) -> ListPromptsResult:
         """List available prompts"""
-        logger.info("PROMPT_LIST - Listing available prompts")
+        # Check if logger is initialized
+        if logger is not None:
+            logger.info("PROMPT_LIST - Listing available prompts")
         try:
             prompt_manager = get_prompt_manager()
             prompts = prompt_manager.list_prompts()
             prompt_count = len(prompts)
-            logger.info(f"PROMPT_LIST_SUCCESS - Found {prompt_count} prompts")
+            if logger is not None:
+                logger.info(f"PROMPT_LIST_SUCCESS - Found {prompt_count} prompts")
             return ListPromptsResult(prompts=prompts)
         except Exception as e:
-            logger.error(f"PROMPT_LIST_ERROR - Error listing prompts: {e}")
+            if logger is not None:
+                logger.error(f"PROMPT_LIST_ERROR - Error listing prompts: {e}")
             return ListPromptsResult(prompts=[])
 
     @server.get_prompt()
@@ -377,10 +556,19 @@ async def main() -> None:
         name: str, arguments: dict[str, str] | None
     ) -> GetPromptResult:
         """Get prompt content"""
+        # Assert logger is initialized (for mypy type narrowing)
+        assert logger is not None, "logger should be initialized"
+
         logger.info(f"PROMPT_GET - Getting prompt: {name}, arguments: {arguments}")
         try:
             prompt_manager = get_prompt_manager()
-            prompt = prompt_manager.get_prompt(name, arguments)
+            # Convert arguments to Dict[str, Any] if needed
+            args_dict: Dict[str, Any] = {}
+            if arguments:
+                # Convert dict[str, str] to Dict[str, Any]
+                args_dict = {k: v for k, v in arguments.items()}
+
+            prompt = prompt_manager.get_prompt(name, args_dict)
 
             if prompt:
                 logger.info(f"PROMPT_GET_SUCCESS - Found prompt: {name}")
@@ -395,6 +583,13 @@ async def main() -> None:
             return GetPromptResult(description="", messages=[])
 
     # Start the server
+    if logger is None:
+        raise RuntimeError("logger should be initialized")
+    if global_config is None:
+        raise RuntimeError("global_config should be initialized")
+    if protocol_logger is None:
+        raise RuntimeError("protocol_logger should be initialized")
+
     logger.info("Starting PostgreSQL MCP Server...")
 
     try:

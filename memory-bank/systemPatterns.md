@@ -17,9 +17,10 @@
    - リソース管理 (resources.py)
 
 2. **データベース接続層** (実装済み)
-   - 接続プール管理 (database.py)
-   - クエリ実行エンジン (database.py)
+   - 接続プール管理 (database.py - ConnectionPoolManager)
+   - クエリ実行エンジン (database.py - ConnectionPoolManager.execute_query)
    - トランザクション管理 (database.py)
+   - グローバル接続プールマネージャー (main.py, crud_tools.py)
 
 3. **設定管理層** (実装済み)
    - 環境変数読み込み (config.py)
@@ -37,9 +38,11 @@
 ## 主要技術的決定
 
 ### 接続管理パターン
-- **接続プーリング**: SQLAlchemyまたは独自実装による効率的な接続管理
+- **接続プーリング**: ConnectionPoolManagerによる効率的な接続管理
+- **グローバルプール共有**: グローバルなConnectionPoolManagerインスタンスによる接続共有
 - **コンテキストマネージャ**: `with`文による安全な接続管理
 - **リトライメカニズム**: 一時的な接続エラーに対する自動リトライ
+- **統合クエリ実行**: ConnectionPoolManagerにクエリ実行機能を統合
 
 ### エラーハンドリングパターン
 ```python
@@ -63,16 +66,21 @@ except Exception as e:
 
 ### リポジトリパターン
 ```python
-class PostgresRepository:
-    def __init__(self, connection_pool):
-        self.pool = connection_pool
+class DatabaseManager:
+    def __init__(self, config: PostgresConfig, pool_manager: Optional[ConnectionPoolManager] = None):
+        self.config = config
+        if pool_manager is None:
+            self.pool_manager = ConnectionPoolManager(config)
+        else:
+            self.pool_manager = pool_manager
+        self._is_connected = False
     
-    async def execute_query(self, query: str, params: dict = None) -> List[Dict]:
-        # クエリ実行ロジック
+    def create_entity(self, table_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
+        # エンティティ作成ロジック
         pass
     
-    async def get_tables(self) -> List[str]:
-        # テーブル一覧取得
+    def read_entity(self, table_name: str, conditions: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
+        # エンティティ読み取りロジック
         pass
 ```
 
@@ -131,8 +139,13 @@ MCP Server Core (main.py)
     │   └── Sampling Integration (tools/sampling_integration.py)
     │
     ├── Connection Manager (database.py)
-    │   ├── Pool Factory (database.py)
-    │   ├── Connection Pool (database.py)
+    │   ├── ConnectionPoolManager (database.py)
+    │   │   ├── 接続プール管理
+    │   │   ├── クエリ実行機能
+    │   │   └── 接続テスト機能
+    │   ├── DatabaseManager (database.py)
+    │   │   ├── 高レベルデータベース操作
+    │   │   └── テーブル管理機能
     │   └── Retry Handler (database.py)
     │
     ├── Configuration Manager (config.py)

@@ -22,9 +22,9 @@ class DatabaseResourceManager:
     async def get_tables_resource(self) -> str:
         """Get tables list as resource content"""
         try:
-            self.db_manager.connection.connect()
+            self.db_manager.connect()
             result = self.db_manager.get_tables()
-            self.db_manager.connection.disconnect()
+            self.db_manager.disconnect()
 
             if result["success"]:
                 tables = result["tables"]
@@ -47,7 +47,7 @@ class DatabaseResourceManager:
     ) -> str:
         """Get table schema as resource content"""
         try:
-            self.db_manager.connection.connect()
+            self.db_manager.connect()
 
             # Get table schema information
             query = """
@@ -64,9 +64,10 @@ class DatabaseResourceManager:
             ORDER BY ordinal_position
             """
 
-            columns = self.db_manager.connection.execute_query(
+            columns_result = self.db_manager.execute_query(
                 query, {"schema": schema, "table_name": table_name}
             )
+            columns = columns_result["data"] if columns_result["success"] else []
 
             # Get table constraints
             constraints_query = """
@@ -83,11 +84,14 @@ class DatabaseResourceManager:
             ORDER BY tc.constraint_type, tc.constraint_name
             """
 
-            constraints = self.db_manager.connection.execute_query(
+            constraints_result = self.db_manager.execute_query(
                 constraints_query, {"schema": schema, "table_name": table_name}
             )
+            constraints = (
+                constraints_result["data"] if constraints_result["success"] else []
+            )
 
-            self.db_manager.connection.disconnect()
+            self.db_manager.disconnect()
 
             # Format content
             content = f"# Table Schema: {schema}.{table_name}\n\n"
@@ -136,43 +140,53 @@ class DatabaseResourceManager:
     async def get_database_info_resource(self) -> str:
         """Get database information as resource content"""
         try:
-            self.db_manager.connection.connect()
+            self.db_manager.connect()
 
             # Get database version
-            version_result = self.db_manager.connection.execute_query(
-                "SELECT version();"
+            version_result = self.db_manager.execute_query("SELECT version();")
+            version = (
+                version_result["data"][0]["version"]
+                if version_result["success"] and version_result["data"]
+                else "Unknown"
             )
-            version = version_result[0]["version"] if version_result else "Unknown"
 
             # Get database name and current user
-            db_info_result = self.db_manager.connection.execute_query(
+            db_info_result = self.db_manager.execute_query(
                 "SELECT current_database(), current_user, current_schema();"
             )
-            db_info = db_info_result[0] if db_info_result else {}
+            db_info = (
+                db_info_result["data"][0]
+                if db_info_result["success"] and db_info_result["data"]
+                else {}
+            )
 
             # Get database size
-            size_result = self.db_manager.connection.execute_query(
+            size_result = self.db_manager.execute_query(
                 (
                     "SELECT pg_size_pretty(pg_database_size(current_database())) "
                     "as database_size;"
                 )
             )
             database_size = (
-                size_result[0]["database_size"] if size_result else "Unknown"
+                size_result["data"][0]["database_size"]
+                if size_result["success"] and size_result["data"]
+                else "Unknown"
             )
 
             # Get number of tables
-            tables_count_result = self.db_manager.connection.execute_query(
+            tables_count_result = self.db_manager.execute_query(
                 (
                     "SELECT COUNT(*) as table_count FROM information_schema.tables "
                     "WHERE table_schema = 'public';"
                 )
             )
             table_count = (
-                tables_count_result[0]["table_count"] if tables_count_result else 0
+                tables_count_result["data"][0]["table_count"]
+                if tables_count_result["success"] and tables_count_result["data"]
+                else 0
             )
 
-            self.db_manager.connection.disconnect()
+            self.db_manager.disconnect()
 
             # Format content
             content = "# Database Information\n\n"

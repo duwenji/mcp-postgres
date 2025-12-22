@@ -554,7 +554,7 @@ async def _gather_sample_data(
     try:
         config = load_config()
         db_manager = DatabaseManager(config.postgres)
-        db_manager.connection.connect()
+        db_manager.connect()
 
         for table_name in table_names:
             try:
@@ -567,20 +567,28 @@ async def _gather_sample_data(
                     )
                     continue
 
-                query = "SELECT * FROM %s LIMIT %s"
-                results = db_manager.connection.execute_query(
-                    query, {"table": table_name, "limit": sample_size}
-                )
+                # Use proper query construction with parameterized LIMIT
+                # Table name is validated, so we can safely format it
+                query = f"SELECT * FROM {table_name} LIMIT %s"  # nosec
+                results = db_manager.execute_query(query, {"limit": sample_size})
                 sample_data[table_name] = SampleDataResult(
-                    sample_size=len(results),
-                    columns=list(results[0].keys()) if results else [],
-                    sample_rows=results[:5] if results else [],
+                    sample_size=len(results["data"]) if results["success"] else 0,
+                    columns=(
+                        list(results["data"][0].keys())
+                        if results["success"] and results["data"]
+                        else []
+                    ),
+                    sample_rows=(
+                        results["data"][:5]
+                        if results["success"] and results["data"]
+                        else []
+                    ),
                 )
             except Exception as e:
                 logger.warning(f"Failed to sample data from {table_name}: {e}")
                 sample_data[table_name] = SampleDataResult(error=str(e))
 
-        db_manager.connection.disconnect()
+        db_manager.disconnect()
     except Exception as e:
         logger.error(f"Error gathering sample data: {e}")
 

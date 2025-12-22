@@ -7,9 +7,10 @@ import re
 import datetime
 import decimal
 import uuid
+import threading
 from typing import Any, Dict, List, Optional
 import psycopg2
-from psycopg2.extras import RealDictCursor
+from psycopg2.pool import SimpleConnectionPool
 
 from .config import PostgresConfig, get_connection_string
 
@@ -82,36 +83,156 @@ class DatabaseError(Exception):
     pass
 
 
-class DatabaseConnection:
-    """PostgreSQL database connection manager"""
+class ConnectionPoolManager:
+    """PostgreSQL connection pool manager with query execution capabilities"""
 
     def __init__(self, config: PostgresConfig):
         self.config = config
         self.connection_string = get_connection_string(config)
-        self._connection: Optional[psycopg2.extensions.connection] = None
+        self._pool: Optional[SimpleConnectionPool] = None
+        self._lock = threading.Lock()
+
+    def initialize_pool(self) -> None:
+        """Initialize connection pool"""
+        with self._lock:
+            if self._pool is None:
+                try:
+                    self._pool = SimpleConnectionPool(
+                        minconn=1,
+                        maxconn=self.config.pool_size,
+                        dsn=self.connection_string,
+                    )
+                    logger.info(
+                        f"Connection pool initialized with max {self.config.pool_size} connections"
+                    )
+                except psycopg2.Error as e:
+                    logger.error(f"Failed to initialize connection pool: {e}")
+                    raise DatabaseError(
+                        f"Connection pool initialization failed: {str(e)}"
+                    )
+
+    def get_connection(self) -> psycopg2.extensions.connection:
+        """Get a connection from the pool"""
+        if self._pool is None:
+            self.initialize_pool()
+
+        # After initialize_pool, _pool should not be None
+        if self._pool is None:
+            raise DatabaseError("Connection pool should be initialized")
+
+        max_retries = 3
+        for attempt in range(max_retries):
+            try:
+                connection = self._pool.getconn()
+                # Test if connection is still alive
+                try:
+                    with connection.cursor() as cursor:
+                        cursor.execute("SELECT 1")
+                        cursor.fetchone()
+                    # Connection is valid
+                    return connection  # type: ignore[no-any-return]
+                except (psycopg2.OperationalError, psycopg2.InterfaceError):
+                    # Connection is closed or broken
+                    logger.warning(
+                        f"Connection from pool is closed/broken (attempt {attempt + 1}/{max_retries})"
+                    )
+                    try:
+                        connection.close()
+                    except Exception as close_error:
+                        logger.debug(
+                            f"Ignoring error when closing broken connection: {close_error}"
+                        )
+                    # Don't return broken connection to pool
+                    # Try to get another connection
+                    continue
+            except psycopg2.Error as e:
+                logger.error(f"Failed to get connection from pool: {e}")
+                if attempt == max_retries - 1:
+                    raise DatabaseError(
+                        f"Failed to get database connection after {max_retries} attempts: {str(e)}"
+                    )
+
+        # If all retries failed, raise exception
+        logger.error("All pool connections failed after retries")
+        raise DatabaseError(
+            f"Failed to get database connection after {max_retries} retries"
+        )
+
+    def return_connection(self, connection: psycopg2.extensions.connection) -> None:
+        """Return a connection to the pool"""
+        if self._pool is not None and not connection.closed:
+            self._pool.putconn(connection)
+
+    def close_pool(self) -> None:
+        """Close all connections in the pool"""
+        with self._lock:
+            if self._pool is not None:
+                self._pool.closeall()
+                self._pool = None
+                logger.info("Connection pool closed")
 
     def connect(self) -> None:
-        """Establish database connection"""
-        try:
-            self._connection = psycopg2.connect(
-                self.connection_string, cursor_factory=RealDictCursor
-            )
-            logger.info(f"Connected to PostgreSQL database: {self.config.database}")
-        except psycopg2.Error as e:
-            logger.error(f"Failed to connect to PostgreSQL: {e}")
-            raise DatabaseError(f"Database connection failed: {str(e)}")
+        """Establish database connection (alias for initialize_pool)"""
+        self.initialize_pool()
+        logger.info(
+            f"Connection pool ready for PostgreSQL database: {self.config.database}"
+        )
 
     def disconnect(self) -> None:
-        """Close database connection"""
-        if self._connection and not self._connection.closed:
-            self._connection.close()
-            logger.info("Disconnected from PostgreSQL database")
+        """Close database connection (alias for close_pool)"""
+        self.close_pool()
+        logger.info("Connection pool closed")
 
-    def execute_query(
+    def test_connection(self) -> bool:
+        """Test database connection through pool"""
+        try:
+            connection = self.get_connection()
+            with connection.cursor() as cursor:
+                cursor.execute("SELECT version();")
+                version_result = cursor.fetchone()
+                if version_result and isinstance(version_result, dict):
+                    version_str = version_result.get("version", "Unknown")
+                else:
+                    version_str = str(version_result) if version_result else "Unknown"
+                logger.info(f"PostgreSQL version: {version_str}")
+            self.return_connection(connection)
+            return True
+        except (DatabaseError, psycopg2.Error) as e:
+            logger.error(f"Connection test failed: {e}")
+            return False
+        finally:
+            # Don't close pool, just return connection
+            pass
+
+
+class DatabaseManager:
+    """High-level database operations manager with connection pooling support"""
+
+    def __init__(
+        self,
+        config: PostgresConfig,
+        pool_manager: Optional[ConnectionPoolManager] = None,
+    ):
+        self.config = config
+        if pool_manager is None:
+            self.pool_manager = ConnectionPoolManager(config)
+        else:
+            self.pool_manager = pool_manager
+        self._is_connected = False
+
+    def _validate_table_name(self, table_name: str) -> None:
+        """Validate table name to prevent SQL injection"""
+        import re
+
+        # Allow only alphanumeric characters and underscores
+        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table_name):
+            raise DatabaseError(f"Invalid table name: {table_name}")
+
+    def _execute_query(
         self, query: str, params: Optional[Dict[str, Any]] = None
     ) -> List[Dict[str, Any]]:
         """
-        Execute a SQL query and return results
+        Internal method to execute a SQL query and return raw results
 
         Args:
             query: SQL query to execute
@@ -123,11 +244,13 @@ class DatabaseConnection:
         Raises:
             DatabaseError: If query execution fails
         """
-        if not self._connection or self._connection.closed:
-            raise DatabaseError("Database connection is not established")
+        connection = None
 
         try:
-            with self._connection.cursor() as cursor:
+            # Always get connection from pool
+            connection = self.pool_manager.get_connection()
+
+            with connection.cursor() as cursor:
                 # Convert list parameters to PostgreSQL arrays for ANY() clauses
                 converted_params: Dict[str, Any] = {}
                 if params:
@@ -159,7 +282,7 @@ class DatabaseConnection:
                 ):
                     # For INSERT with RETURNING clause, fetch the inserted row
                     results = cursor.fetchall()
-                    self._connection.commit()
+                    connection.commit()
                     if results:
                         converted_results = [
                             convert_for_json_serialization(dict(row)) for row in results
@@ -173,7 +296,7 @@ class DatabaseConnection:
                 ):
                     # For UPDATE with RETURNING clause, fetch the updated row
                     results = cursor.fetchall()
-                    self._connection.commit()
+                    connection.commit()
                     if results:
                         converted_results = [
                             convert_for_json_serialization(dict(row)) for row in results
@@ -187,7 +310,7 @@ class DatabaseConnection:
                 ):
                     # For DELETE with RETURNING clause, fetch the deleted rows
                     results = cursor.fetchall()
-                    self._connection.commit()
+                    connection.commit()
                     if results:
                         converted_results = [
                             convert_for_json_serialization(dict(row)) for row in results
@@ -197,64 +320,30 @@ class DatabaseConnection:
                         return []
                 else:
                     # For other queries, commit and return affected row count
-                    self._connection.commit()
+                    connection.commit()
                     return [{"affected_rows": cursor.rowcount}]
 
         except psycopg2.Error as e:
-            self._connection.rollback()
+            if connection:
+                connection.rollback()
             logger.error(f"Query execution failed: {e}")
             raise DatabaseError(f"Query execution failed: {str(e)}")
-
-    def test_connection(self) -> bool:
-        """Test database connection"""
-        try:
-            self.connect()
-            if self._connection is None:
-                logger.error("Database connection is None")
-                return False
-            with self._connection.cursor() as cursor:
-                cursor.execute("SELECT version();")
-                version_result = cursor.fetchone()
-                # RealDictCursorを使用しているので辞書として扱う
-                if version_result and isinstance(version_result, dict):
-                    version_str = version_result.get("version", "Unknown")
-                else:
-                    version_str = str(version_result) if version_result else "Unknown"
-                logger.info(f"PostgreSQL version: {version_str}")
-            return True
-        except (DatabaseError, psycopg2.Error) as e:
-            logger.error(f"Connection test failed: {e}")
-            return False
         finally:
-            self.disconnect()
-
-
-class DatabaseManager:
-    """High-level database operations manager with connection pooling support"""
-
-    def __init__(self, config: PostgresConfig):
-        self.config = config
-        self.connection = DatabaseConnection(config)
-        self._is_connected = False
-
-    def _validate_table_name(self, table_name: str) -> None:
-        """Validate table name to prevent SQL injection"""
-        import re
-
-        # Allow only alphanumeric characters and underscores
-        if not re.match(r"^[a-zA-Z_][a-zA-Z0-9_]*$", table_name):
-            raise DatabaseError(f"Invalid table name: {table_name}")
+            # Always return connection to pool
+            if connection:
+                self.pool_manager.return_connection(connection)
 
     def connect(self) -> None:
         """Establish database connection if not already connected"""
         if not self._is_connected:
-            self.connection.connect()
+            self.pool_manager.connect()  # Initializes connection pool
             self._is_connected = True
 
     def disconnect(self) -> None:
         """Disconnect from database if connected"""
         if self._is_connected:
-            self.connection.disconnect()
+            # Note: We don't close the pool here as it might be shared globally
+            # The pool is managed by the global pool manager in main.py
             self._is_connected = False
 
     def create_entity(self, table_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
@@ -284,7 +373,7 @@ class DatabaseManager:
         )
 
         try:
-            results = self.connection.execute_query(query, converted_data)
+            results = self._execute_query(query, converted_data)
             return {"success": True, "created": results[0] if results else {}}
         except DatabaseError as e:
             return {"success": False, "error": str(e)}
@@ -351,7 +440,7 @@ class DatabaseManager:
             query += f" OFFSET {offset}"
 
         try:
-            results = self.connection.execute_query(query, params)
+            results = self._execute_query(query, params)
             return {"success": True, "results": results, "count": len(results)}
         except DatabaseError as e:
             return {"success": False, "error": str(e)}
@@ -395,7 +484,7 @@ class DatabaseManager:
         )
 
         try:
-            results = self.connection.execute_query(query, params)
+            results = self._execute_query(query, params)
             return {
                 "success": True,
                 "updated": results[0] if results else {},
@@ -433,7 +522,7 @@ class DatabaseManager:
         )
 
         try:
-            results = self.connection.execute_query(query, params)
+            results = self._execute_query(query, params)
             return {"success": True, "deleted": results, "affected_rows": len(results)}
         except DatabaseError as e:
             return {"success": False, "error": str(e)}
@@ -471,7 +560,7 @@ class DatabaseManager:
             for data in data_list:
                 # Convert data for database compatibility
                 converted_data = {k: convert_for_database(v) for k, v in data.items()}
-                results = self.connection.execute_query(query, converted_data)
+                results = self._execute_query(query, converted_data)
                 if results:
                     created_entities.append(results[0])
 
@@ -577,8 +666,8 @@ class DatabaseManager:
         """
 
         try:
-            results = self.connection.execute_query(query)
-            table_names = [row["table_name"] for row in results]
+            results = self._execute_query(query)
+            table_names: List[str] = [row["table_name"] for row in results]
             return {"success": True, "tables": table_names}
         except DatabaseError as e:
             return {"success": False, "error": str(e)}
@@ -637,7 +726,7 @@ class DatabaseManager:
         )
 
         try:
-            self.connection.execute_query(query)
+            self._execute_query(query)
             return {
                 "success": True,
                 "message": f"Table {table_name} created successfully",
@@ -684,13 +773,13 @@ class DatabaseManager:
                     if default:
                         query += f" DEFAULT {default}"
 
-                    self.connection.execute_query(query)
+                    self._execute_query(query)
 
                 elif op_type == "drop_column":
                     query = (
                         f"ALTER TABLE {table_name} DROP COLUMN {column_name}"  # nosec
                     )
-                    self.connection.execute_query(query)
+                    self._execute_query(query)
 
                 elif op_type == "alter_column":
                     data_type = operation["data_type"]
@@ -701,7 +790,7 @@ class DatabaseManager:
                         f"ALTER TABLE {table_name} ALTER COLUMN {column_name} "
                         f"TYPE {data_type}"  # nosec
                     )
-                    self.connection.execute_query(query)
+                    self._execute_query(query)
 
                     if nullable is not None:
                         if nullable:
@@ -714,7 +803,7 @@ class DatabaseManager:
                                 f"ALTER TABLE {table_name} ALTER COLUMN {column_name} "
                                 f"SET NOT NULL"  # nosec
                             )
-                        self.connection.execute_query(query)
+                    self._execute_query(query)
 
                     if default is not None:
                         if default == "":
@@ -727,7 +816,7 @@ class DatabaseManager:
                                 f"ALTER TABLE {table_name} ALTER COLUMN {column_name} "
                                 f"SET DEFAULT {default}"  # nosec
                             )
-                        self.connection.execute_query(query)
+                    self._execute_query(query)
 
                 elif op_type == "rename_column":
                     new_column_name = operation["new_column_name"]
@@ -740,7 +829,7 @@ class DatabaseManager:
                         f"ALTER TABLE {table_name} RENAME COLUMN {column_name} "
                         f"TO {new_column_name}"  # nosec
                     )
-                    self.connection.execute_query(query)
+                    self._execute_query(query)
 
             return {
                 "success": True,
@@ -771,7 +860,7 @@ class DatabaseManager:
         query = f"DROP TABLE {if_exists_clause}{table_name}{cascade_clause}"  # nosec
 
         try:
-            self.connection.execute_query(query)
+            self._execute_query(query)
             return {
                 "success": True,
                 "message": f"Table {table_name} dropped successfully",
@@ -800,7 +889,7 @@ class DatabaseManager:
                 if "LIMIT" not in query.upper():
                     query += f" LIMIT {limit}"
 
-            results = self.connection.execute_query(query, params)
+            results = self._execute_query(query, params)
 
             # Extract column names from first row if available
             columns = []

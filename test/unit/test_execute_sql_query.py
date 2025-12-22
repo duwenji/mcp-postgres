@@ -2,14 +2,30 @@
 Unit tests for execute_sql_query tool
 """
 
-import pytest
-from unittest.mock import Mock, patch
-from src.mcp_postgres_duwenji.tools.crud_tools import handle_execute_sql_query
-from src.mcp_postgres_duwenji.database import DatabaseError
+import sys
+import os
+
+# Add src directory to Python path for imports
+src_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "..", "src"))
+if src_path not in sys.path:
+    sys.path.insert(0, src_path)
+
+import pytest  # noqa: E402
+from unittest.mock import Mock, patch  # noqa: E402
+from src.mcp_postgres_duwenji.tools.crud_tools import (
+    handle_execute_sql_query,
+)  # noqa: E402
+from src.mcp_postgres_duwenji.database import DatabaseError  # noqa: E402
 
 
 class TestExecuteSqlQuery:
     """Test cases for execute_sql_query tool"""
+
+    def setup_method(self):
+        """Clear global state before each test"""
+        from src.mcp_postgres_duwenji.shared import set_global_db_connection
+
+        set_global_db_connection(None, None)
 
     @pytest.mark.asyncio
     async def test_execute_sql_query_success(self):
@@ -33,22 +49,17 @@ class TestExecuteSqlQuery:
 
         with (
             patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.load_config"
-            ) as mock_load_config,
-            patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.DatabaseManager"
-            ) as mock_db_manager_class,
+                "src.mcp_postgres_duwenji.tools.crud_tools.get_database_manager"
+            ) as mock_get_database_manager,
         ):
-
-            # Mock config
-            mock_config = Mock()
-            mock_config.postgres = Mock()
-            mock_load_config.return_value = mock_config
 
             # Mock database manager
             mock_db_manager = Mock()
-            mock_db_manager_class.return_value = mock_db_manager
             mock_db_manager.execute_query.return_value = mock_result
+            # Mock connect and disconnect to do nothing
+            mock_db_manager.connect = Mock()
+            mock_db_manager.disconnect = Mock()
+            mock_get_database_manager.return_value = mock_db_manager
 
             # Execute the handler
             result = await handle_execute_sql_query(mock_query, mock_params, mock_limit)
@@ -60,11 +71,9 @@ class TestExecuteSqlQuery:
             assert result["row_count"] == mock_result["row_count"]
 
             # Verify database manager was called correctly
-            mock_db_manager.connect.assert_called_once()
             mock_db_manager.execute_query.assert_called_once_with(
                 mock_query, mock_params, mock_limit
             )
-            mock_db_manager.disconnect.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execute_sql_query_without_params(self):
@@ -84,22 +93,14 @@ class TestExecuteSqlQuery:
 
         with (
             patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.load_config"
-            ) as mock_load_config,
-            patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.DatabaseManager"
-            ) as mock_db_manager_class,
+                "src.mcp_postgres_duwenji.tools.crud_tools.get_database_manager"
+            ) as mock_get_database_manager,
         ):
-
-            # Mock config
-            mock_config = Mock()
-            mock_config.postgres = Mock()
-            mock_load_config.return_value = mock_config
 
             # Mock database manager
             mock_db_manager = Mock()
-            mock_db_manager_class.return_value = mock_db_manager
             mock_db_manager.execute_query.return_value = mock_result
+            mock_get_database_manager.return_value = mock_db_manager
 
             # Execute the handler without parameters
             result = await handle_execute_sql_query(mock_query, None, mock_limit)
@@ -126,22 +127,14 @@ class TestExecuteSqlQuery:
 
         with (
             patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.load_config"
-            ) as mock_load_config,
-            patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.DatabaseManager"
-            ) as mock_db_manager_class,
+                "src.mcp_postgres_duwenji.tools.crud_tools.get_database_manager"
+            ) as mock_get_database_manager,
         ):
-
-            # Mock config
-            mock_config = Mock()
-            mock_config.postgres = Mock()
-            mock_load_config.return_value = mock_config
 
             # Mock database manager to raise error
             mock_db_manager = Mock()
-            mock_db_manager_class.return_value = mock_db_manager
             mock_db_manager.execute_query.side_effect = mock_error
+            mock_get_database_manager.return_value = mock_db_manager
 
             # Execute the handler
             result = await handle_execute_sql_query(mock_query, mock_params, mock_limit)
@@ -152,12 +145,9 @@ class TestExecuteSqlQuery:
             assert "Table 'non_existent_table' does not exist" in result["error"]
 
             # Verify database manager was called
-            mock_db_manager.connect.assert_called_once()
             mock_db_manager.execute_query.assert_called_once_with(
                 mock_query, mock_params, mock_limit
             )
-            # disconnect() should be called even when there's an error
-            mock_db_manager.disconnect.assert_called_once()
 
     @pytest.mark.asyncio
     async def test_execute_sql_query_unexpected_error(self):
@@ -172,22 +162,14 @@ class TestExecuteSqlQuery:
 
         with (
             patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.load_config"
-            ) as mock_load_config,
-            patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.DatabaseManager"
-            ) as mock_db_manager_class,
+                "src.mcp_postgres_duwenji.tools.crud_tools.get_database_manager"
+            ) as mock_get_database_manager,
         ):
-
-            # Mock config
-            mock_config = Mock()
-            mock_config.postgres = Mock()
-            mock_load_config.return_value = mock_config
 
             # Mock database manager to raise unexpected error
             mock_db_manager = Mock()
-            mock_db_manager_class.return_value = mock_db_manager
             mock_db_manager.execute_query.side_effect = mock_error
+            mock_get_database_manager.return_value = mock_db_manager
 
             # Execute the handler
             result = await handle_execute_sql_query(mock_query, mock_params, mock_limit)
@@ -217,28 +199,23 @@ class TestExecuteSqlQuery:
 
         with (
             patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.load_config"
-            ) as mock_load_config,
-            patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.DatabaseManager"
-            ) as mock_db_manager_class,
+                "src.mcp_postgres_duwenji.tools.crud_tools.get_database_manager"
+            ) as mock_get_database_manager,
         ):
-
-            # Mock config
-            mock_config = Mock()
-            mock_config.postgres = Mock()
-            mock_load_config.return_value = mock_config
 
             # Mock database manager
             mock_db_manager = Mock()
-            mock_db_manager_class.return_value = mock_db_manager
             mock_db_manager.execute_query.return_value = mock_result
+            mock_get_database_manager.return_value = mock_db_manager
 
             # Execute the handler
             result = await handle_execute_sql_query(mock_query, mock_params, mock_limit)
 
             # Assertions
             assert result["success"] is True
+            assert result["data"] == mock_result["data"]
+            assert result["columns"] == mock_result["columns"]
+            assert result["row_count"] == mock_result["row_count"]
             assert result["query"] == mock_query  # Query should not be modified
 
             # Verify database manager was called with original query
@@ -265,22 +242,14 @@ class TestExecuteSqlQuery:
 
         with (
             patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.load_config"
-            ) as mock_load_config,
-            patch(
-                "src.mcp_postgres_duwenji.tools.crud_tools.DatabaseManager"
-            ) as mock_db_manager_class,
+                "src.mcp_postgres_duwenji.tools.crud_tools.get_database_manager"
+            ) as mock_get_database_manager,
         ):
-
-            # Mock config
-            mock_config = Mock()
-            mock_config.postgres = Mock()
-            mock_load_config.return_value = mock_config
 
             # Mock database manager
             mock_db_manager = Mock()
-            mock_db_manager_class.return_value = mock_db_manager
             mock_db_manager.execute_query.return_value = mock_result
+            mock_get_database_manager.return_value = mock_db_manager
 
             # Execute the handler
             result = await handle_execute_sql_query(mock_query, mock_params, mock_limit)
@@ -288,8 +257,9 @@ class TestExecuteSqlQuery:
             # Assertions
             assert result["success"] is True
             assert result["data"] == []
-            assert result["row_count"] == 0
             assert result["columns"] == []
+            assert result["row_count"] == 0
+            assert result["query"] == mock_query + " LIMIT 100"
 
     def test_execute_sql_query_tool_definition(self):
         """Test that execute_sql_query tool is properly defined"""
