@@ -10,6 +10,7 @@ import uuid
 import threading
 from typing import Any, Dict, List, Optional
 import psycopg2
+import psycopg2.extras
 from psycopg2.pool import SimpleConnectionPool
 
 from .config import PostgresConfig, get_connection_string
@@ -250,7 +251,7 @@ class DatabaseManager:
             # Always get connection from pool
             connection = self.pool_manager.get_connection()
 
-            with connection.cursor() as cursor:
+            with connection.cursor(cursor_factory=psycopg2.extras.DictCursor) as cursor:
                 # Convert list parameters to PostgreSQL arrays for ANY() clauses
                 converted_params: Dict[str, Any] = {}
                 if params:
@@ -271,7 +272,7 @@ class DatabaseManager:
                     # Ensure results are always a list of dictionaries
                     if results:
                         converted_results = [
-                            convert_for_json_serialization(dict(row)) for row in results
+                            convert_for_json_serialization(row) for row in results
                         ]
                         return converted_results
                     else:
@@ -285,7 +286,7 @@ class DatabaseManager:
                     connection.commit()
                     if results:
                         converted_results = [
-                            convert_for_json_serialization(dict(row)) for row in results
+                            convert_for_json_serialization(row) for row in results
                         ]
                         return converted_results
                     else:
@@ -299,7 +300,7 @@ class DatabaseManager:
                     connection.commit()
                     if results:
                         converted_results = [
-                            convert_for_json_serialization(dict(row)) for row in results
+                            convert_for_json_serialization(row) for row in results
                         ]
                         return converted_results
                     else:
@@ -313,7 +314,7 @@ class DatabaseManager:
                     connection.commit()
                     if results:
                         converted_results = [
-                            convert_for_json_serialization(dict(row)) for row in results
+                            convert_for_json_serialization(row) for row in results
                         ]
                         return converted_results
                     else:

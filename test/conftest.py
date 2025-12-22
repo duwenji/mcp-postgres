@@ -93,9 +93,7 @@ def clean_test_database(test_database_config):
 
         # Reset sequences
         manager.execute_query("ALTER SEQUENCE users_id_seq RESTART WITH 1")
-        manager.execute_query(
-            "ALTER SEQUENCE products_id_seq RESTART WITH 1"
-        )
+        manager.execute_query("ALTER SEQUENCE products_id_seq RESTART WITH 1")
         manager.execute_query("ALTER SEQUENCE orders_id_seq RESTART WITH 1")
 
         print("Test database cleaned successfully")
