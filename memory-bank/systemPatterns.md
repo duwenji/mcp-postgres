@@ -1,61 +1,28 @@
 # System Patterns: PostgreSQL MCP Server
 
-## システムアーキテクチャ
+## システムアーキテクチャ概要
 
 ### 全体アーキテクチャ
 ```
-┌─────────────────┐    ┌──────────────────┐    ┌─────────────────┐
-│   AI Assistant  │◄──►│  PostgreSQL MCP  │◄──►│  PostgreSQL     │
-│                 │    │     Server       │    │   Database      │
-└─────────────────┘    └──────────────────┘    └─────────────────┘
+AI Assistant ↔ PostgreSQL MCP Server ↔ PostgreSQL Database
 ```
 
-### コンポーネント構成
-1. **MCPサーバーコア** (実装済み)
-   - MCPプロトコルハンドラー (main.py)
-   - ツール登録と実行管理 (main.py)
-   - リソース管理 (resources.py)
-
-2. **データベース接続層** (実装済み)
-   - 接続プール管理 (database.py - ConnectionPoolManager)
-   - クエリ実行エンジン (database.py - ConnectionPoolManager.execute_query)
-   - トランザクション管理 (database.py)
-   - グローバル接続プールマネージャー (main.py, crud_tools.py)
-
-3. **設定管理層** (実装済み)
-   - 環境変数読み込み (config.py)
-   - 設定バリデーション (config.py)
-   - セキュリティ設定 (config.py)
-
-4. **ツールシステム** (実装済み)
-   - CRUDツール (tools/crud_tools.py)
-   - スキーマツール (tools/schema_tools.py)
-   - テーブル管理ツール (tools/table_tools.py)
-   - トランザクションツール (tools/transaction_tools.py)
-   - MCP Samplingツール (tools/sampling_tools.py, tools/sampling_integration.py)
-   - ツールハンドラー (tools/ディレクトリ)
+### 主要コンポーネント
+1. **MCPサーバーコア** - プロトコルハンドリングとツール管理
+2. **データベース接続層** - 接続プール管理とクエリ実行
+3. **設定管理層** - 環境変数とセキュリティ設定
+4. **ツールシステム** - CRUD、スキーマ、サンプリングツール
 
 ## 主要技術的決定
 
 ### 接続管理パターン
 - **接続プーリング**: ConnectionPoolManagerによる効率的な接続管理
-- **グローバルプール共有**: グローバルなConnectionPoolManagerインスタンスによる接続共有
+- **グローバルプール共有**: グローバルインスタンスによる接続共有
 - **コンテキストマネージャ**: `with`文による安全な接続管理
-- **リトライメカニズム**: 一時的な接続エラーに対する自動リトライ
-- **統合クエリ実行**: ConnectionPoolManagerにクエリ実行機能を統合
 
 ### エラーハンドリングパターン
-```python
-# エラーハンドリングの基本パターン
-try:
-    result = await execute_query(query, params)
-except psycopg2.Error as e:
-    logger.error(f"Database error: {e}")
-    raise MCPError(f"Query execution failed: {str(e)}")
-except Exception as e:
-    logger.error(f"Unexpected error: {e}")
-    raise MCPError("Internal server error")
-```
+- 階層的なエラーハンドリング（データベースエラー、予期せぬエラー）
+- 適切なロギングとエラーメッセージの提供
 
 ### セキュリティパターン
 - **パラメータ化クエリ**: SQLインジェクション対策
@@ -64,128 +31,45 @@ except Exception as e:
 
 ## 設計パターン
 
-### リポジトリパターン
-```python
-class DatabaseManager:
-    def __init__(self, config: PostgresConfig, pool_manager: Optional[ConnectionPoolManager] = None):
-        self.config = config
-        if pool_manager is None:
-            self.pool_manager = ConnectionPoolManager(config)
-        else:
-            self.pool_manager = pool_manager
-        self._is_connected = False
-    
-    def create_entity(self, table_name: str, data: Dict[str, Any]) -> Dict[str, Any]:
-        # エンティティ作成ロジック
-        pass
-    
-    def read_entity(self, table_name: str, conditions: Optional[Dict[str, Any]] = None) -> Dict[str, Any]:
-        # エンティティ読み取りロジック
-        pass
-```
-
-### ファクトリパターン
-```python
-class ConnectionPoolFactory:
-    @staticmethod
-    def create_pool(config: PostgresConfig) -> ConnectionPool:
-        # 接続プールの作成
-        pass
-```
-
-### ストラテジーパターン
-```python
-class QueryExecutor:
-    def __init__(self, strategy: ExecutionStrategy):
-        self.strategy = strategy
-    
-    async def execute(self, query: str, params: dict = None):
-        return await self.strategy.execute(query, params)
-```
+### 主要なパターン
+- **リポジトリパターン**: DatabaseManagerによるデータアクセスの抽象化
+- **ファクトリパターン**: 接続プールの作成と管理
+- **ストラテジーパターン**: クエリ実行戦略の分離
 
 ## 重要な実装パス
 
 ### MCPツール登録フロー
-1. ツール定義の作成
-2. MCPサーバーへの登録
-3. リクエストハンドラーの設定
-4. エラーハンドリングの実装
+1. ツール定義の作成 → 2. MCPサーバーへの登録 → 3. ハンドラー設定 → 4. エラーハンドリング
 
 ### データベース接続フロー
-1. 設定の読み込みとバリデーション
-2. 接続プールの初期化
-3. 接続の取得と解放
-4. クエリの実行と結果の処理
-
-### クエリ実行フロー
-1. 入力パラメータのバリデーション
-2. パラメータ化クエリの構築
-3. データベース接続の取得
-4. クエリの実行と結果の取得
-5. 結果のフォーマットと返却
+1. 設定読み込み → 2. 接続プール初期化 → 3. 接続取得 → 4. クエリ実行 → 5. 結果処理
 
 ## コンポーネント関係
 
-### 依存関係図
+### 依存関係概要
 ```
-MCP Server Core (main.py)
-    │
-    ├── Tool Registry (main.py)
-    │   ├── CRUD Tools (tools/crud_tools.py)
-    │   ├── Schema Tools (tools/schema_tools.py)
-    │   ├── Table Tools (tools/table_tools.py)
-    │   ├── Transaction Tools (tools/transaction_tools.py)
-    │   ├── Sampling Tools (tools/sampling_tools.py)
-    │   └── Sampling Integration (tools/sampling_integration.py)
-    │
-    ├── Connection Manager (database.py)
-    │   ├── ConnectionPoolManager (database.py)
-    │   │   ├── 接続プール管理
-    │   │   ├── クエリ実行機能
-    │   │   └── 接続テスト機能
-    │   ├── DatabaseManager (database.py)
-    │   │   ├── 高レベルデータベース操作
-    │   │   └── テーブル管理機能
-    │   └── Retry Handler (database.py)
-    │
-    ├── Configuration Manager (config.py)
-    │   ├── Env Loader (config.py)
-    │   ├── Validator (config.py)
-    │   └── Security Config (config.py)
-    │
-    └── Resource Manager (resources.py)
-        ├── Static Resources (resources.py)
-        └── Dynamic Resources (resources.py)
+MCP Server Core
+├── Tool Registry (各種ツール)
+├── Connection Manager (接続プール管理)
+├── Configuration Manager (設定管理)
+└── Resource Manager (リソース管理)
 ```
 
 ### データフロー
-1. **ツールリクエスト受信**
-2. **パラメータバリデーション**
-3. **データベース接続取得**
-4. **クエリ実行**
-5. **結果フォーマット**
-6. **レスポンス返却**
+ツールリクエスト → パラメータ検証 → データベース接続 → クエリ実行 → 結果返却
 
 ## クリティカルな実装詳細
 
 ### 接続プール設定
-```python
-# 最適なプール設定
-MIN_CONNECTIONS = 1
-MAX_CONNECTIONS = 20
-CONNECTION_TIMEOUT = 30
-IDLE_TIMEOUT = 300
-```
+- 最小接続数: 1
+- 最大接続数: 20  
+- 接続タイムアウト: 30秒
+- アイドルタイムアウト: 300秒
 
-### クエリタイムアウト
-- デフォルトタイムアウト: 30秒
-- 設定可能なタイムアウト値
-- タイムアウト時の適切なエラーハンドリング
-
-### メモリ管理
+### パフォーマンス考慮事項
+- クエリタイムアウト管理（デフォルト30秒）
 - 大きな結果セットのストリーミング処理
-- 接続リークの防止
-- リソースの適切な解放
+- 接続リークの防止とリソース解放
 
 ## 拡張性の考慮
 
@@ -198,3 +82,6 @@ IDLE_TIMEOUT = 300
 - 環境ごとの設定切り替え
 - 動的な設定リロード
 - 複数データベース接続のサポート
+
+---
+*詳細なコード例と実装の詳細は、必要に応じてソースコードを参照してください。*
