@@ -7,6 +7,22 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+### Added
+- **Context-based Resource Management**: New `AppContext` class for centralized resource lifecycle management
+- **Improved Lifespan Management**: Complete rewrite of `lifespan` function to handle resource initialization and cleanup
+- **Type-safe Resource Access**: All server resources now accessed through context with proper type hints
+
+### Changed
+- **Global Variables Removal**: Eliminated `global_config`, `logger`, `global_pool_manager` global variables
+- **Resource Initialization**: Moved resource initialization from `main()` to `lifespan` context manager
+- **Shared Module Update**: Updated `shared.py` to support both context-based and legacy global variable access
+- **Tool Handler Compatibility**: Maintained backward compatibility for all tool handlers
+
+### Fixed
+- **Resource Lifecycle**: Proper resource cleanup during server shutdown
+- **Dependency Injection**: Improved testability through explicit resource passing
+- **Code Organization**: Better separation of concerns with dedicated context module
+
 ## [1.1.0] - 2025-10-19
 
 ### Added
