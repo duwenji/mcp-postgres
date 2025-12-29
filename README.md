@@ -41,9 +41,16 @@ Model Context Protocol (MCP) サーバーで、PostgreSQL データベース操�
 - `database://connection`: データベース接続パラメータ（ホスト、ポート、データベース、ユーザー名、パスワードなど）
 - `database://schema/{table_name}`: 特定のテーブルのスキーマ情報
 
-## インストール手順
+## 開発環境構築手順
 
-### uv パッケージマネージャーのインストール
+### 1. リポジトリのクローン
+```bash
+# GitHubからプロジェクトをクローン
+git clone https://github.com/duwenji/mcp-postgres.git
+cd mcp-postgres
+```
+
+### 2. uv パッケージマネージャーのインストール
 
 **uvとは？**
 uvは高速なPythonパッケージマネージャーで、Pythonのインストールとバージョン管理も行えます。システムにPythonがインストールされていない場合でも、uvが自動的に必要なPythonバージョンをダウンロードして管理します。
@@ -69,35 +76,78 @@ brew install uv
 uv --version
 ```
 
-### Pythonのセットアップ（uvによる自動管理）
+### 3. プロジェクトの依存関係インストール
 
-uvはPythonのインストールも自動的に行います。以下のいずれかの方法でPython環境を準備できます：
+クローンしたプロジェクトディレクトリで以下のコマンドを実行します：
 
-**方法A: uvによる自動Pythonインストール（推奨）**
 ```bash
-# 特定のPythonバージョンをインストール
-uv python install 3.10
+# プロジェクトディレクトリに移動
+cd mcp-postgres
 
-# または最新のPythonをインストール
-uv python install
+# 仮想環境を作成（オプション - uvは自動的に仮想環境を管理）
+uv venv
 
-# インストールされたPythonバージョンを確認
-uv python list
+# メインの依存関係をインストール
+uv sync
+
+# 開発用依存関係もインストールする場合
+uv sync --group dev
 ```
 
-**方法B: 既存のPython環境を使用する場合**
-システムにすでにPython 3.10以上がインストールされている場合は、uvが自動的に検出して使用します：
+**代替方法：開発モードでのインストール**
 ```bash
-# 利用可能なPythonバージョンを確認
-uv python list
-
-# 特定のPythonバージョンを選択
-uv python pin 3.10
+# 開発モードでインストール（コード変更が即反映）
+uv pip install -e .
 ```
 
-### PostgreSQLデータベースのセットアップ
+### 4. 環境変数の設定
 
-**方法A: ローカルインストール**
+プロジェクトのルートディレクトリに`.env`ファイルを作成します：
+
+```bash
+# .env.exampleを参考に.envファイルを作成
+cp .env.example .env
+```
+
+`.env`ファイルを編集して、PostgreSQLデータベースの接続情報を設定します：
+
+```env
+# PostgreSQL接続設定
+POSTGRES_HOST=localhost
+POSTGRES_PORT=5432
+POSTGRES_DB=mcp-postgres-db
+POSTGRES_USER=postgres
+POSTGRES_PASSWORD=postgres
+POSTGRES_SSL_MODE=prefer
+
+# Docker自動セットアップ設定（オプション）
+MCP_DOCKER_AUTO_SETUP=true
+MCP_DOCKER_IMAGE=postgres:16
+MCP_DOCKER_CONTAINER_NAME=mcp-postgres-auto
+MCP_DOCKER_PORT=5432
+MCP_DOCKER_DATA_VOLUME=mcp_postgres_data
+MCP_DOCKER_PASSWORD=postgres
+MCP_DOCKER_DATABASE=mcp-postgres-db
+MCP_DOCKER_USERNAME=postgres
+
+# ログ設定
+MCP_LOG_LEVEL=INFO
+MCP_PROTOCOL_DEBUG=true
+MCP_LOG_DIR=./logs
+```
+
+### 5. PostgreSQLデータベースのセットアップ
+
+**方法A: Dockerを使用（推奨）**
+```bash
+# PostgreSQLコンテナの実行
+docker run --name postgres-mcp -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=mcp-postgres-db -p 5432:5432 -d postgres:16
+
+# コンテナの状態確認
+docker ps
+```
+
+**方法B: ローカルインストール**
 - [PostgreSQL公式サイト](https://www.postgresql.org/download/)からインストール
 - またはパッケージマネージャーを使用：
   ```bash
@@ -111,16 +161,7 @@ uv python pin 3.10
   # 公式インストーラーを使用
   ```
 
-**方法B: Dockerを使用（推奨）**
-```bash
-# PostgreSQLコンテナの実行
-docker run --name postgres-mcp -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=mcp-postgres-db -p 5432:5432 -d postgres:16
-
-# コンテナの状態確認
-docker ps
-```
-
-### 前提条件の確認
+### 6. インストール確認
 
 すべての前提条件がインストールされたことを確認：
 
@@ -131,12 +172,46 @@ uv --version
 # Pythonのバージョン確認（uv経由）
 uv python list
 
+# プロジェクトのインストール確認
+uv run mcp-postgres-duwenji --help
+
 # PostgreSQL接続確認（ローカルインストールの場合）
 psql -h localhost -U postgres -d mcp-postgres-db
 
 # またはDockerコンテナの場合
 docker exec -it postgres-mcp psql -U postgres -d mcp-postgres-db
 ```
+
+### 7. テストの実行
+
+```bash
+# 単体テストのみ実行
+uv run pytest test/unit/ -v
+
+# すべてのテストを実行（統合テストを含む）
+test\run_tests.bat all  # Windowsの場合
+
+# または直接uvでテスト実行
+uv run pytest test/ -v
+```
+
+### 8. 開発ツールの使用
+
+```bash
+# コードフォーマット
+uv run black src/
+
+# リンター実行
+uv run flake8 src/
+
+# 型チェック
+uv run mypy src/
+
+# セキュリティチェック
+uv run bandit -r src/
+```
+
+## インストールと設定
 
 ### 方法1: 既存のPostgreSQLデータベースを使用する場合
 

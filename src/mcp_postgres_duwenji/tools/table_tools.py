@@ -68,6 +68,7 @@ create_table = Tool(
         "required": ["table_name", "columns"],
     },
 )
+create_table._meta = {"concerns": {"development": "-"}}  # type: ignore[attr-defined]
 
 
 alter_table = Tool(
@@ -132,6 +133,7 @@ alter_table = Tool(
         "required": ["table_name", "operations"],
     },
 )
+alter_table._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 drop_table = Tool(
@@ -158,6 +160,7 @@ drop_table = Tool(
         "required": ["table_name"],
     },
 )
+drop_table._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 # Table management tool handlers

@@ -32,6 +32,7 @@ create_entity = Tool(
         "required": ["table_name", "data"],
     },
 )
+create_entity._meta = {"concerns": {"development": "-", "using": "-"}}  # type: ignore[attr-defined]
 
 
 read_entity = Tool(
@@ -84,6 +85,7 @@ read_entity = Tool(
         "required": ["table_name"],
     },
 )
+read_entity._meta = {"concerns": {"development": "-", "using": "-"}}  # type: ignore[attr-defined]
 
 
 update_entity = Tool(
@@ -110,6 +112,9 @@ update_entity = Tool(
         "required": ["table_name", "conditions", "updates"],
     },
 )
+update_entity._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "using": "-", "maintenance": "-"}
+}
 
 
 delete_entity = Tool(
@@ -131,6 +136,9 @@ delete_entity = Tool(
         "required": ["table_name", "conditions"],
     },
 )
+delete_entity._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "using": "-", "maintenance": "-"}
+}
 
 
 # Batch operation tool definitions
@@ -156,6 +164,7 @@ batch_create_entities = Tool(
         "required": ["table_name", "data_list"],
     },
 )
+batch_create_entities._meta = {"concerns": {"development": "-", "using": "-"}}  # type: ignore[attr-defined]
 
 batch_update_entities = Tool(
     name="batch_update_entities",
@@ -187,6 +196,9 @@ batch_update_entities = Tool(
         "required": ["table_name", "conditions_list", "updates_list"],
     },
 )
+batch_update_entities._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "using": "-", "maintenance": "-"}
+}
 
 batch_delete_entities = Tool(
     name="batch_delete_entities",
@@ -210,6 +222,9 @@ batch_delete_entities = Tool(
         "required": ["table_name", "conditions_list"],
     },
 )
+batch_delete_entities._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "using": "-", "maintenance": "-"}
+}
 
 
 # Tool handlers
@@ -457,6 +472,7 @@ execute_sql_query = Tool(
         "required": ["query"],
     },
 )
+execute_sql_query._meta = {"concerns": {"development": "-", "using": "-", "tuning": "-"}}  # type: ignore[attr-defined]
 
 
 # Tool handlers

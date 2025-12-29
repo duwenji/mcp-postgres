@@ -243,6 +243,9 @@ database_tables_resource = Resource(
     description="List of all tables in the database",
     mimeType="text/markdown",
 )
+database_tables_resource._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "using": "-", "maintenance": "-"}
+}
 
 database_info_resource = Resource(
     uri="database://info",  # type: ignore
@@ -250,6 +253,9 @@ database_info_resource = Resource(
     description="Database metadata and version information",
     mimeType="text/markdown",
 )
+database_info_resource._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "using": "-", "maintenance": "-"}
+}
 
 database_connection_resource = Resource(
     uri="database://connection",  # type: ignore
@@ -257,6 +263,9 @@ database_connection_resource = Resource(
     description="Database connection parameters (host, port, database, username, password, etc.)",
     mimeType="application/json",
 )
+database_connection_resource._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "maintenance": "-"}
+}
 
 
 def get_database_resources() -> List[Resource]:

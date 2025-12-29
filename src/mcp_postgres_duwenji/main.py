@@ -112,6 +112,49 @@ async def main() -> None:
         # Use type: ignore to bypass mypy check since Server class doesn't have context attribute
         server.context = context  # type: ignore[attr-defined]
 
+        # Check if MCP library supports concerns feature and add concerns to server if supported
+        supports_concerns = hasattr(server, '_declared_concerns') or hasattr(server, 'declare_concerns')
+        if supports_concerns:
+            context.logger.info("MCP library supports concerns feature")
+            
+            # Define concerns list
+            concerns_list = [
+                {
+                    "name": "development",
+                    "description": "Development phase concern",
+                    "values": ["-"],
+                    "default": "-",
+                },
+                {
+                    "name": "maintenance",
+                    "description": "Maintenance phase concern",
+                    "values": ["-"],
+                    "default": "-",
+                },
+                {
+                    "name": "using",
+                    "description": "Using phase concern",
+                    "values": ["-"],
+                    "default": "-",
+                },
+                {
+                    "name": "tuning",
+                    "description": "Tuning phase concern",
+                    "values": ["-"],
+                    "default": "-",
+                },
+            ]
+            
+            # Add concerns to server before creating initialization options
+            if hasattr(server, '_declared_concerns'):
+                server._declared_concerns = concerns_list
+                context.logger.info("Added concerns to server._declared_concerns")
+            elif hasattr(server, 'declare_concerns'):
+                server.declare_concerns(concerns_list)
+                context.logger.info("Added concerns via server.declare_concerns()")
+        else:
+            context.logger.warning("MCP library does not support concerns feature - filtering disabled")
+
         # Get tools and handlers
         crud_tools = get_crud_tools()
         crud_handlers = get_crud_handlers()
@@ -225,9 +268,10 @@ async def main() -> None:
                 }
 
         # Register tools via list_tools handler
+        # Modify list_tools handler to filter based on concerns
         @server.list_tools()
         async def handle_list_tools() -> List[Tool]:
-            """List available tools including health check"""
+            """List available tools including health check, filtered by concerns."""
             logger = context.logger
             tool_count = len(all_tools) + 1  # +1 for health check
             logger.info(f"TOOL_LIST - Listing {tool_count} available tools")
@@ -239,7 +283,26 @@ async def main() -> None:
                 inputSchema={"type": "object", "properties": {}, "required": []},
             )
 
-            return all_tools + [health_tool]
+            # Apply concerns filtering only if supported and concerns are configured
+            if supports_concerns and hasattr(context, 'concerns') and context.concerns:
+                # Filter tools based on concerns
+                filtered_tools = []
+                for tool in all_tools:
+                    # Safe access to _meta attribute (not officially part of Tool class)
+                    if hasattr(tool, "_meta"):
+                        tool_concerns = tool._meta.get("concerns", {})  # type: ignore[attr-defined]
+                    else:
+                        tool_concerns = {}
+                    matches = _matches_concerns(tool_concerns, context.concerns)
+                    if matches:
+                        filtered_tools.append(tool)
+
+                logger.info(f"TOOL_LIST - Filtered tools count: {len(filtered_tools)}")
+                return filtered_tools + [health_tool]
+            else:
+                # Return all tools when concerns filtering is not supported or not configured
+                logger.info(f"TOOL_LIST - Returning all {tool_count} tools (concerns filtering disabled)")
+                return all_tools + [health_tool]
 
         # Register resources
         database_resources = get_database_resources()
@@ -248,7 +311,7 @@ async def main() -> None:
 
         @server.list_resources()
         async def handle_list_resources() -> List[Resource]:
-            """List available resources"""
+            """List available resources, filtered by concerns."""
             logger = context.logger
             logger.info("RESOURCE_LIST - Listing available resources")
             resources = database_resources.copy()
@@ -271,14 +334,15 @@ async def main() -> None:
                         f"RESOURCE_LIST - Found {table_count} tables in database"
                     )
                     for table_name in table_list:
-                        resources.append(
-                            Resource(
-                                uri=f"database://schema/{table_name}",  # type: ignore
-                                name=f"Table Schema: {table_name}",
-                                description=f"Schema information for table {table_name}",
-                                mimeType="text/markdown",
-                            )
+                        resource = Resource(
+                            uri=f"database://schema/{table_name}",  # type: ignore
+                            name=f"Table Schema: {table_name}",
+                            description=f"Schema information for table {table_name}",
+                            mimeType="text/markdown",
                         )
+                        # Add _meta attribute for concerns filtering
+                        resource._meta = {}  # type: ignore[attr-defined]
+                        resources.append(resource)
                 else:
                     logger.warning(
                         f"RESOURCE_LIST - Failed to get tables: {tables_result.get('error', 'Unknown error')}"
@@ -288,9 +352,28 @@ async def main() -> None:
                     f"RESOURCE_LIST_ERROR - Error listing table resources: {e}"
                 )
 
-            total_resources = len(resources)
-            logger.info(f"RESOURCE_LIST - Total resources available: {total_resources}")
-            return resources
+            # Apply concerns filtering only if supported and concerns are configured
+            if supports_concerns and hasattr(context, 'concerns') and context.concerns:
+                # Filter resources based on concerns
+                filtered_resources = []
+                for resource in resources:
+                    resource_concerns = getattr(resource, "_meta", {}).get("concerns", {})
+                    matches = _matches_concerns(resource_concerns, context.concerns)
+                    if matches:
+                        filtered_resources.append(resource)
+
+                total_resources = len(filtered_resources)
+                logger.info(
+                    f"RESOURCE_LIST - Filtered resources available: {total_resources}"
+                )
+                return filtered_resources
+            else:
+                # Return all resources when concerns filtering is not supported or not configured
+                total_resources = len(resources)
+                logger.info(
+                    f"RESOURCE_LIST - Returning all {total_resources} resources (concerns filtering disabled)"
+                )
+                return resources
 
         @server.list_resource_templates()
         async def handle_list_resource_templates() -> List[types.ResourceTemplate]:
@@ -350,15 +433,42 @@ async def main() -> None:
 
         @server.list_prompts()
         async def handle_list_prompts(request: ListPromptsRequest) -> ListPromptsResult:
-            """List available prompts"""
+            """List available prompts, filtered by concerns."""
             logger = context.logger
             logger.info("PROMPT_LIST - Listing available prompts")
             try:
                 prompt_manager = get_prompt_manager()
                 prompts = prompt_manager.list_prompts()
                 prompt_count = len(prompts)
-                logger.info(f"PROMPT_LIST_SUCCESS - Found {prompt_count} prompts")
-                return ListPromptsResult(prompts=prompts)
+                logger.info(
+                    f"PROMPT_LIST - Found {prompt_count} prompts before filtering"
+                )
+
+                # Apply concerns filtering only if supported and concerns are configured
+                if supports_concerns and hasattr(context, 'concerns') and context.concerns:
+                    # Filter prompts based on concerns
+                    filtered_prompts = []
+                    for prompt in prompts:
+                        # Add _meta attribute if not present
+                        if not hasattr(prompt, "_meta"):
+                            prompt._meta = {}  # type: ignore[attr-defined]
+
+                        prompt_concerns = getattr(prompt, "_meta", {}).get("concerns", {})
+                        matches = _matches_concerns(prompt_concerns, context.concerns)
+                        if matches:
+                            filtered_prompts.append(prompt)
+
+                    filtered_count = len(filtered_prompts)
+                    logger.info(
+                        f"PROMPT_LIST_SUCCESS - Found {filtered_count} prompts after filtering"
+                    )
+                    return ListPromptsResult(prompts=filtered_prompts)
+                else:
+                    # Return all prompts when concerns filtering is not supported or not configured
+                    logger.info(
+                        f"PROMPT_LIST - Returning all {prompt_count} prompts (concerns filtering disabled)"
+                    )
+                    return ListPromptsResult(prompts=prompts)
             except Exception as e:
                 logger.error(f"PROMPT_LIST_ERROR - Error listing prompts: {e}")
                 return ListPromptsResult(prompts=[])
@@ -407,9 +517,13 @@ async def main() -> None:
                     read_stream, write_stream, config, protocol_logger
                 )
 
-                await server.run(
-                    read_stream, write_stream, server.create_initialization_options()
-                )
+                # Get initialization options from server
+                # Note: If concerns were added to server._declared_concerns earlier,
+                # they should already be included in the initialization options
+                initialization_options = server.create_initialization_options()
+
+                # Start the server with the options
+                await server.run(read_stream, write_stream, initialization_options)
 
         except Exception as e:
             logger.error(f"Server error: {e}")
@@ -419,6 +533,46 @@ async def main() -> None:
             # 詳細なエラー情報はファイルにのみ出力（sys.stderr/sys.stdoutへの出力なし）
             # 既にlogger.errorでファイルに出力されているため、追加の出力は不要
             raise
+
+        # Note: update_concerns decorator is not available in the current MCP version
+        # This functionality would need to be implemented as a custom tool or handler
+        # For now, we'll keep the concerns configuration static
+
+
+def _matches_concerns(item_concerns: dict, context_concerns: dict) -> bool:
+    """
+    Check if item concerns match context concerns based on the new rules:
+    1. If item has no concerns, always match
+    2. For each concern in item:
+       a. If concern key not in context_concerns → no concern match
+       b. If concern value == "-" → match (ignore value comparison)
+       c. If context_concerns[concern_key] == "-" → match (ignore value comparison)
+       d. If context_concerns[concern_key] == item_concerns[concern_key] → match
+    3. OR condition: at least one concern must match
+    """
+    if not item_concerns:
+        return True
+
+    for key, value in item_concerns.items():
+        if key not in context_concerns:
+            # Concern key not in context → match
+            return False
+
+        if value == "-":
+            # value is "-" → match (ignore value comparison)
+            return True
+
+        context_value = context_concerns[key]
+        if context_value == "-":
+            # Context value is "-" → match (ignore value comparison)
+            return True
+
+        if context_value == value:
+            # Values match → match
+            return True
+
+    # No concerns matched
+    return False
 
 
 def cli_main() -> None:

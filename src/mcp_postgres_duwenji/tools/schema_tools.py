@@ -28,6 +28,9 @@ get_tables = Tool(
         "required": [],
     },
 )
+get_tables._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "using": "-", "maintenance": "-"}
+}
 
 
 get_table_schema = Tool(
@@ -49,6 +52,9 @@ get_table_schema = Tool(
         "required": ["table_name"],
     },
 )
+get_table_schema._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "using": "-", "maintenance": "-"}
+}
 
 
 get_database_info = Tool(
@@ -56,6 +62,9 @@ get_database_info = Tool(
     description="Get database metadata and version information",
     inputSchema={"type": "object", "properties": {}, "required": []},
 )
+get_database_info._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "using": "-", "maintenance": "-"}
+}
 
 
 # Tool handlers

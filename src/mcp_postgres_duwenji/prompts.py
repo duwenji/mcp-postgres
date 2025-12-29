@@ -160,6 +160,22 @@ class PromptManager:
             },
         }
 
+    def _get_prompt_concerns(self, prompt_key: str) -> Dict[str, str]:
+        """Get concerns for a specific prompt based on its type"""
+        concerns_map = {
+            "data_analysis_basic": {"development": "-", "using": "-"},
+            "data_analysis_advanced": {"development": "-", "using": "-"},
+            "query_optimization": {"tuning": "-", "development": "-"},
+            "schema_design": {"development": "-"},
+            "data_quality_assessment": {"maintenance": "-", "using": "-"},
+            "relationship_analysis": {"development": "-", "maintenance": "-"},
+            "index_optimization": {"tuning": "-", "development": "-"},
+            "migration_planning": {"maintenance": "-", "development": "-"},
+            "performance_troubleshooting": {"tuning": "-", "maintenance": "-"},
+            "backup_recovery_planning": {"maintenance": "-"},
+        }
+        return concerns_map.get(prompt_key, {})
+
     def get_prompt(
         self, name: str, arguments: Optional[Dict[str, str]] = None
     ) -> Optional[Prompt]:
@@ -179,16 +195,20 @@ class PromptManager:
             else []
         )
 
-        return Prompt(
+        prompt = Prompt(
             name=prompt_config["name"],
             description=prompt_config["description"],
             arguments=prompt_arguments,
         )
+        # Add _meta with concerns
+        prompt._meta = {"concerns": self._get_prompt_concerns(name)}  # type: ignore[attr-defined]
+        return prompt
 
     def list_prompts(self) -> List[Prompt]:
         """List all available prompts"""
-        return [
-            Prompt(
+        prompts_list = []
+        for key, config in self.prompts.items():
+            prompt = Prompt(
                 name=config["name"],
                 description=config["description"],
                 arguments=(
@@ -200,8 +220,10 @@ class PromptManager:
                     else []
                 ),
             )
-            for config in self.prompts.values()
-        ]
+            # Add _meta with concerns based on prompt type
+            prompt._meta = {"concerns": self._get_prompt_concerns(key)}  # type: ignore[attr-defined]
+            prompts_list.append(prompt)
+        return prompts_list
 
 
 # Global prompt manager instance

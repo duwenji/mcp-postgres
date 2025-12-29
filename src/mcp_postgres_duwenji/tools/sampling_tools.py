@@ -36,6 +36,9 @@ get_multiple_table_schemas = Tool(
         "required": ["table_names"],
     },
 )
+get_multiple_table_schemas._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "maintenance": "-"}
+}
 
 
 analyze_table_relationships = Tool(
@@ -53,6 +56,9 @@ analyze_table_relationships = Tool(
         "required": ["table_names"],
     },
 )
+analyze_table_relationships._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "maintenance": "-"}
+}
 
 
 generate_schema_overview = Tool(
@@ -71,6 +77,7 @@ generate_schema_overview = Tool(
         "required": [],
     },
 )
+generate_schema_overview._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 analyze_normalization_state = Tool(
@@ -94,6 +101,7 @@ analyze_normalization_state = Tool(
         "required": ["table_names"],
     },
 )
+analyze_normalization_state._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 suggest_normalization_improvements = Tool(
@@ -117,6 +125,9 @@ suggest_normalization_improvements = Tool(
         "required": ["table_names"],
     },
 )
+suggest_normalization_improvements._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "maintenance": "-"}
+}
 
 
 # Tool handlers
