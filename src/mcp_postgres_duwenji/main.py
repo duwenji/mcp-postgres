@@ -113,47 +113,51 @@ async def main() -> None:
         server.context = context  # type: ignore[attr-defined]
 
         # Check if MCP library supports concerns feature and add concerns to server if supported
-        supports_concerns = hasattr(server, '_declared_concerns') or hasattr(server, 'declare_concerns')
+        supports_concerns = hasattr(server, "_declared_concerns") or hasattr(
+            server, "declare_concerns"
+        )
         if supports_concerns:
             context.logger.info("MCP library supports concerns feature")
-            
-            # Define concerns list
+
+            # Define concerns list using ConcernDefinition
             concerns_list = [
-                {
-                    "name": "development",
-                    "description": "Development phase concern",
-                    "values": ["-"],
-                    "default": "-",
-                },
-                {
-                    "name": "maintenance",
-                    "description": "Maintenance phase concern",
-                    "values": ["-"],
-                    "default": "-",
-                },
-                {
-                    "name": "using",
-                    "description": "Using phase concern",
-                    "values": ["-"],
-                    "default": "-",
-                },
-                {
-                    "name": "tuning",
-                    "description": "Tuning phase concern",
-                    "values": ["-"],
-                    "default": "-",
-                },
+                types.ConcernDefinition(
+                    name="development",
+                    description="Development phase concern",
+                    values=["-"],
+                    default="-",
+                ),
+                types.ConcernDefinition(
+                    name="maintenance",
+                    description="Maintenance phase concern",
+                    values=["-"],
+                    default="-",
+                ),
+                types.ConcernDefinition(
+                    name="using",
+                    description="Using phase concern",
+                    values=["-"],
+                    default="-",
+                ),
+                types.ConcernDefinition(
+                    name="tuning",
+                    description="Tuning phase concern",
+                    values=["-"],
+                    default="-",
+                ),
             ]
-            
+
             # Add concerns to server before creating initialization options
-            if hasattr(server, '_declared_concerns'):
+            if hasattr(server, "_declared_concerns"):
                 server._declared_concerns = concerns_list
                 context.logger.info("Added concerns to server._declared_concerns")
-            elif hasattr(server, 'declare_concerns'):
+            elif hasattr(server, "declare_concerns"):
                 server.declare_concerns(concerns_list)
                 context.logger.info("Added concerns via server.declare_concerns()")
         else:
-            context.logger.warning("MCP library does not support concerns feature - filtering disabled")
+            context.logger.warning(
+                "MCP library does not support concerns feature - filtering disabled"
+            )
 
         # Get tools and handlers
         crud_tools = get_crud_tools()
@@ -284,7 +288,7 @@ async def main() -> None:
             )
 
             # Apply concerns filtering only if supported and concerns are configured
-            if supports_concerns and hasattr(context, 'concerns') and context.concerns:
+            if supports_concerns and hasattr(context, "concerns") and context.concerns:
                 # Filter tools based on concerns
                 filtered_tools = []
                 for tool in all_tools:
@@ -301,7 +305,9 @@ async def main() -> None:
                 return filtered_tools + [health_tool]
             else:
                 # Return all tools when concerns filtering is not supported or not configured
-                logger.info(f"TOOL_LIST - Returning all {tool_count} tools (concerns filtering disabled)")
+                logger.info(
+                    f"TOOL_LIST - Returning all {tool_count} tools (concerns filtering disabled)"
+                )
                 return all_tools + [health_tool]
 
         # Register resources
@@ -353,11 +359,13 @@ async def main() -> None:
                 )
 
             # Apply concerns filtering only if supported and concerns are configured
-            if supports_concerns and hasattr(context, 'concerns') and context.concerns:
+            if supports_concerns and hasattr(context, "concerns") and context.concerns:
                 # Filter resources based on concerns
                 filtered_resources = []
                 for resource in resources:
-                    resource_concerns = getattr(resource, "_meta", {}).get("concerns", {})
+                    resource_concerns = getattr(resource, "_meta", {}).get(
+                        "concerns", {}
+                    )
                     matches = _matches_concerns(resource_concerns, context.concerns)
                     if matches:
                         filtered_resources.append(resource)
@@ -445,7 +453,11 @@ async def main() -> None:
                 )
 
                 # Apply concerns filtering only if supported and concerns are configured
-                if supports_concerns and hasattr(context, 'concerns') and context.concerns:
+                if (
+                    supports_concerns
+                    and hasattr(context, "concerns")
+                    and context.concerns
+                ):
                     # Filter prompts based on concerns
                     filtered_prompts = []
                     for prompt in prompts:
@@ -453,7 +465,9 @@ async def main() -> None:
                         if not hasattr(prompt, "_meta"):
                             prompt._meta = {}  # type: ignore[attr-defined]
 
-                        prompt_concerns = getattr(prompt, "_meta", {}).get("concerns", {})
+                        prompt_concerns = getattr(prompt, "_meta", {}).get(
+                            "concerns", {}
+                        )
                         matches = _matches_concerns(prompt_concerns, context.concerns)
                         if matches:
                             filtered_prompts.append(prompt)
