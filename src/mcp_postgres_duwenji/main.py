@@ -119,42 +119,51 @@ async def main() -> None:
         if supports_concerns:
             context.logger.info("MCP library supports concerns feature")
 
-            # Define concerns list using ConcernDefinition
-            concerns_list = [
-                types.ConcernDefinition(
-                    name="development",
-                    description="Development phase concern",
-                    values=["-"],
-                    default="-",
-                ),
-                types.ConcernDefinition(
-                    name="maintenance",
-                    description="Maintenance phase concern",
-                    values=["-"],
-                    default="-",
-                ),
-                types.ConcernDefinition(
-                    name="using",
-                    description="Using phase concern",
-                    values=["-"],
-                    default="-",
-                ),
-                types.ConcernDefinition(
-                    name="tuning",
-                    description="Tuning phase concern",
-                    values=["-"],
-                    default="-",
-                ),
-            ]
+            # Check if ConcernDefinition exists in types module
+            ConcernDefinition = getattr(types, "ConcernDefinition", None)
+            if ConcernDefinition is None:
+                context.logger.warning(
+                    "ConcernDefinition not found in mcp.types - concerns feature disabled"
+                )
+                supports_concerns = False
+            else:
+                # Define concerns list using ConcernDefinition
+                concerns_list = [
+                    ConcernDefinition(
+                        name="development",
+                        description="Development phase concern",
+                        values=["-"],
+                        default="-",
+                    ),
+                    ConcernDefinition(
+                        name="maintenance",
+                        description="Maintenance phase concern",
+                        values=["-"],
+                        default="-",
+                    ),
+                    ConcernDefinition(
+                        name="using",
+                        description="Using phase concern",
+                        values=["-"],
+                        default="-",
+                    ),
+                    ConcernDefinition(
+                        name="tuning",
+                        description="Tuning phase concern",
+                        values=["-"],
+                        default="-",
+                    ),
+                ]
 
-            # Add concerns to server before creating initialization options
-            if hasattr(server, "_declared_concerns"):
-                server._declared_concerns = concerns_list
-                context.logger.info("Added concerns to server._declared_concerns")
-            elif hasattr(server, "declare_concerns"):
-                server.declare_concerns(concerns_list)
-                context.logger.info("Added concerns via server.declare_concerns()")
-        else:
+                # Add concerns to server before creating initialization options
+                if hasattr(server, "_declared_concerns"):
+                    server._declared_concerns = concerns_list
+                    context.logger.info("Added concerns to server._declared_concerns")
+                elif hasattr(server, "declare_concerns"):
+                    server.declare_concerns(concerns_list)
+                    context.logger.info("Added concerns via server.declare_concerns()")
+
+        if not supports_concerns:
             context.logger.warning(
                 "MCP library does not support concerns feature - filtering disabled"
             )
