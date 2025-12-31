@@ -44,6 +44,7 @@ interactive_data_exploration = Tool(
         "required": ["table_names"],
     },
 )
+interactive_data_exploration._meta = {"concerns": {"development": "-", "using": "-"}}  # type: ignore[attr-defined]
 
 
 guided_analysis_workflow = Tool(
@@ -80,6 +81,7 @@ guided_analysis_workflow = Tool(
         "required": ["analysis_type", "table_names"],
     },
 )
+guided_analysis_workflow._meta = {"concerns": {"development": "-", "using": "-"}}  # type: ignore[attr-defined]
 
 
 clarify_analysis_requirements = Tool(
@@ -105,6 +107,7 @@ clarify_analysis_requirements = Tool(
         "required": ["initial_request", "table_names"],
     },
 )
+clarify_analysis_requirements._meta = {"concerns": {"development": "-", "using": "-"}}  # type: ignore[attr-defined]
 
 
 # Tool handlers

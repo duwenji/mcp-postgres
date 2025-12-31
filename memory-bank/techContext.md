@@ -11,7 +11,7 @@
 - **パッケージ管理**: uv
 
 ### 主要ライブラリ
-- `mcp>=1.0.0`: MCPプロトコル実装
+- `mcp @ git+https://github.com/duwenji/python-sdk-1936.git@Proposal--Concern-Based-Filtering-%231936`: Concernベースフィルタリング対応MCPプロトコル実装
 - `psycopg2-binary>=2.9.0`: PostgreSQLデータベース接続
 - `pydantic>=2.0.0`: 設定バリデーション
 - `python-dotenv>=1.0.0`: 環境変数管理
@@ -156,4 +156,4 @@ class PostgresConfig(BaseSettings):
 - エラートラッキングの設定
 
 ---
-*最終更新: 2025年12月22日*
+*最終更新: 2025年12月31日*

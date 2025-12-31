@@ -129,6 +129,7 @@ request_llm_analysis = Tool(
         "required": ["analysis_type", "table_names"],
     },
 )
+request_llm_analysis._meta = {"concerns": {"development": "-", "tuning": "-"}}  # type: ignore[attr-defined]
 
 
 generate_normalization_plan = Tool(
@@ -157,6 +158,7 @@ generate_normalization_plan = Tool(
         "required": ["table_names"],
     },
 )
+generate_normalization_plan._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 assess_data_quality = Tool(
@@ -195,7 +197,9 @@ assess_data_quality = Tool(
         "required": ["table_names"],
     },
 )
-
+assess_data_quality._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "using": "-", "maintenance": "-"}
+}
 
 optimize_schema_with_llm = Tool(
     name="optimize_schema_with_llm",
@@ -230,6 +234,9 @@ optimize_schema_with_llm = Tool(
         "required": ["table_names"],
     },
 )
+optimize_schema_with_llm._meta = {  # type: ignore[attr-defined]
+    "concerns": {"development": "-", "tuning": "-", "maintenance": "-"}
+}
 
 
 # Tool handlers

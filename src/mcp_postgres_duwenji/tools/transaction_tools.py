@@ -41,6 +41,7 @@ begin_change_session = Tool(
         "required": [],
     },
 )
+begin_change_session._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 create_schema_backup = Tool(
@@ -61,6 +62,7 @@ create_schema_backup = Tool(
         "required": ["session_id"],
     },
 )
+create_schema_backup._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 apply_schema_changes = Tool(
@@ -87,6 +89,7 @@ apply_schema_changes = Tool(
         "required": ["session_id", "ddl_statements"],
     },
 )
+apply_schema_changes._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 rollback_schema_changes = Tool(
@@ -107,6 +110,7 @@ rollback_schema_changes = Tool(
         "required": ["session_id"],
     },
 )
+rollback_schema_changes._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 list_schema_backups = Tool(
@@ -123,6 +127,7 @@ list_schema_backups = Tool(
         "required": ["session_id"],
     },
 )
+list_schema_backups._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 commit_schema_changes = Tool(
@@ -139,6 +144,7 @@ commit_schema_changes = Tool(
         "required": ["session_id"],
     },
 )
+commit_schema_changes._meta = {"concerns": {"development": "-", "maintenance": "-"}}  # type: ignore[attr-defined]
 
 
 # Tool handlers

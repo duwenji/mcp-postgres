@@ -4,7 +4,7 @@
 
 ### 全体アーキテクチャ
 ```
-AI Assistant ↔ PostgreSQL MCP Server ↔ PostgreSQL Database
+AI Assistant ↔ PostgreSQL MCP Server (Concern Filtering) ↔ PostgreSQL Database
 ```
 
 ### 主要コンポーネント
@@ -12,6 +12,7 @@ AI Assistant ↔ PostgreSQL MCP Server ↔ PostgreSQL Database
 2. **データベース接続層** - 接続プール管理とクエリ実行
 3. **設定管理層** - 環境変数とセキュリティ設定
 4. **ツールシステム** - CRUD、スキーマ、サンプリングツール
+5. **Concernフィルタリング層** - ユーザー意図に基づく動的フィルタリング
 
 ## 主要技術的決定
 
@@ -85,3 +86,4 @@ MCP Server Core
 
 ---
 *詳細なコード例と実装の詳細は、必要に応じてソースコードを参照してください。*
+*最終更新: 2025年12月31日*

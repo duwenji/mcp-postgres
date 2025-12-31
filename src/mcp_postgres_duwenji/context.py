@@ -30,6 +30,14 @@ class AppContext:
         self.pool_manager: Optional[ConnectionPoolManager] = None
         self.docker_manager: Optional[DockerManager] = None
 
+        # Concerns management for MCP filtering
+        self.concerns: dict = {
+            "development": "-",
+            "maintenance": "-",
+            "using": "-",
+            "tuning": "-",
+        }
+
         # Derived resources (initialized on-demand)
         self._initialized: bool = False
         self._shutdown_requested: bool = False
@@ -70,6 +78,35 @@ class AppContext:
         for name, resource in required_resources:
             if resource is None:
                 raise RuntimeError(f"Required resource '{name}' is not initialized")
+
+    @staticmethod
+    def _validate_concerns(concerns: dict) -> tuple[bool, str]:
+        """
+        Validate concerns dictionary.
+
+        Args:
+            concerns: Dictionary of concerns to validate
+
+        Returns:
+            Tuple of (is_valid, error_message)
+        """
+        valid_concerns = {"development", "maintenance", "using", "tuning"}
+        valid_values = {"-", "low", "medium", "high"}
+
+        for key, value in concerns.items():
+            if key not in valid_concerns:
+                return (
+                    False,
+                    f"Invalid concern key: {key}. Valid keys are: {', '.join(valid_concerns)}",
+                )
+
+            if value not in valid_values:
+                return (
+                    False,
+                    f"Invalid concern value for {key}: {value}. Valid values are: {', '.join(valid_values)}",
+                )
+
+        return True, ""
 
     async def shutdown(self) -> None:
         """

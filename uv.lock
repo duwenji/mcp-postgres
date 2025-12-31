@@ -841,8 +841,8 @@ wheels = [
 
 [[package]]
 name = "mcp"
-version = "1.25.0"
-source = { registry = "https://pypi.org/simple" }
+version = "1.25.1.dev3+a45a7fe"
+source = { git = "https://github.com/duwenji/python-sdk-1936.git?rev=Proposal--Concern-Based-Filtering-%25231936#a45a7feb334530f40aefb95601950f1446146eaf" }
 dependencies = [
     { name = "anyio" },
     { name = "httpx" },
@@ -859,14 +859,10 @@ dependencies = [
     { name = "typing-inspection" },
     { name = "uvicorn", marker = "sys_platform != 'emscripten'" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d5/2d/649d80a0ecf6a1f82632ca44bec21c0461a9d9fc8934d38cb5b319f2db5e/mcp-1.25.0.tar.gz", hash = "sha256:56310361ebf0364e2d438e5b45f7668cbb124e158bb358333cd06e49e83a6802", size = 605387, upload-time = "2025-12-19T10:19:56.985Z" }
-wheels = [
-    { url = "https://files.pythonhosted.org/packages/e2/fc/6dc7659c2ae5ddf280477011f4213a74f806862856b796ef08f028e664bf/mcp-1.25.0-py3-none-any.whl", hash = "sha256:b37c38144a666add0862614cc79ec276e97d72aa8ca26d622818d4e278b9721a", size = 233076, upload-time = "2025-12-19T10:19:55.416Z" },
-]
 
 [[package]]
 name = "mcp-postgres-duwenji"
-version = "1.2.53"
+version = "1.2.54"
 source = { editable = "." }
 dependencies = [
     { name = "build" },
@@ -916,7 +912,7 @@ requires-dist = [
     { name = "docker", specifier = ">=6.0.0" },
     { name = "flake8", marker = "extra == 'dev'", specifier = ">=6.0.0" },
     { name = "freezegun", marker = "extra == 'dev'", specifier = ">=1.0.0" },
-    { name = "mcp", specifier = ">=1.0.0" },
+    { name = "mcp", git = "https://github.com/duwenji/python-sdk-1936.git?rev=Proposal--Concern-Based-Filtering-%25231936" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.0.0" },
     { name = "psycopg2-binary", specifier = ">=2.9.0" },
     { name = "pydantic", specifier = ">=2.0.0" },
