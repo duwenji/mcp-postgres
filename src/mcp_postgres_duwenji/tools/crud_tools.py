@@ -32,7 +32,7 @@ create_entity = Tool(
         "required": ["table_name", "data"],
     },
 )
-create_entity._meta = {"concerns": {"development": "-", "using": "-"}}  # type: ignore[attr-defined]
+create_entity._meta = {"concerns": {"development": "development", "using": "regular_use"}}  # type: ignore[attr-defined]
 
 
 read_entity = Tool(
@@ -504,6 +504,67 @@ async def handle_execute_sql_query(
         return {"success": False, "error": f"Internal server error: {str(e)}"}
 
 
+# Concern update tool
+update_concerns = Tool(
+    name="update_concerns",
+    description="Update concern configuration for filtering tools, resources, and prompts",
+    inputSchema={
+        "type": "object",
+        "properties": {
+            "concerns": {
+                "type": "object",
+                "description": "Dictionary of concern keys and values to update",
+                "additionalProperties": {
+                    "type": "string",
+                    "enum": ["planning", "development", "testing", "maintenance", "none", "basic", "advanced", "performance", "exploration", "regular_use", "optimization", "*"],
+                },
+            },
+        },
+        "required": ["concerns"],
+    },
+)
+update_concerns._meta = {"concerns": {"development": "development", "using": "regular_use"}}  # type: ignore[attr-defined]
+
+
+# Concern update handler
+async def handle_update_concerns(concerns: Dict[str, str]) -> Dict[str, Any]:
+    """Handle update concerns tool execution"""
+    logger.info(f"CONCERN_TOOL - update_concerns - Concerns: {concerns}")
+    
+    try:
+        # Import here to avoid circular imports
+        from ..context import get_global_context
+        
+        context = get_global_context()
+        if context is None:
+            logger.error("CONCERN_TOOL_ERROR - update_concerns - Context not available")
+            return {"success": False, "error": "Server context not available"}
+        
+        # Store old concerns for logging
+        old_concerns = context.concerns.copy()
+        
+        # Update concerns in context
+        # Only update provided concerns, keep existing ones
+        for key, value in concerns.items():
+            if key in context.concerns:
+                context.concerns[key] = value
+                logger.info(f"CONCERN_UPDATE - Updated {key}: {old_concerns.get(key)} -> {value}")
+            else:
+                logger.warning(f"CONCERN_UPDATE_WARNING - Unknown concern key: {key}")
+        
+        logger.info(f"CONCERN_TOOL_SUCCESS - update_concerns - Updated: {old_concerns} -> {context.concerns}")
+        return {
+            "success": True,
+            "message": "Concerns updated successfully",
+            "old_concerns": old_concerns,
+            "new_concerns": context.concerns,
+        }
+        
+    except Exception as e:
+        logger.error(f"CONCERN_TOOL_ERROR - update_concerns - Unexpected error: {e}")
+        return {"success": False, "error": f"Internal server error: {str(e)}"}
+
+
 # Tool registry
 def get_crud_tools() -> List[Tool]:
     """Get all CRUD tools including batch operations and SQL query execution"""
@@ -516,6 +577,7 @@ def get_crud_tools() -> List[Tool]:
         batch_update_entities,
         batch_delete_entities,
         execute_sql_query,
+        update_concerns,
     ]
 
 
@@ -532,4 +594,5 @@ def get_crud_handlers() -> (
         "batch_update_entities": handle_batch_update_entities,
         "batch_delete_entities": handle_batch_delete_entities,
         "execute_sql_query": handle_execute_sql_query,
+        "update_concerns": handle_update_concerns,
     }

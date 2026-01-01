@@ -131,27 +131,27 @@ async def main() -> None:
                 concerns_list = [
                     ConcernDefinition(
                         name="development",
-                        description="Development phase concern",
-                        values=["-"],
-                        default="-",
+                        description="開発フェーズ",
+                        values=["planning", "development", "testing", "maintenance", "*"],
+                        default="development",
                     ),
                     ConcernDefinition(
                         name="maintenance",
-                        description="Maintenance phase concern",
-                        values=["-"],
-                        default="-",
+                        description="保守フェーズ",
+                        values=["none", "basic", "advanced", "*"],
+                        default="basic",
                     ),
                     ConcernDefinition(
                         name="using",
-                        description="Using phase concern",
-                        values=["-"],
-                        default="-",
+                        description="使用フェーズ",
+                        values=["exploration", "regular_use", "optimization", "*"],
+                        default="regular_use",
                     ),
                     ConcernDefinition(
                         name="tuning",
-                        description="Tuning phase concern",
-                        values=["-"],
-                        default="-",
+                        description="チューニング要件",
+                        values=["none", "basic", "advanced", "performance", "*"],
+                        default="basic",
                     ),
                 ]
 
@@ -281,10 +281,10 @@ async def main() -> None:
                 }
 
         # Register tools via list_tools handler
-        # Modify list_tools handler to filter based on concerns
+        # MCP library will automatically filter tools based on concerns
         @server.list_tools()
         async def handle_list_tools() -> List[Tool]:
-            """List available tools including health check, filtered by concerns."""
+            """List available tools including health check."""
             logger = context.logger
             tool_count = len(all_tools) + 1  # +1 for health check
             logger.info(f"TOOL_LIST - Listing {tool_count} available tools")
@@ -296,28 +296,12 @@ async def main() -> None:
                 inputSchema={"type": "object", "properties": {}, "required": []},
             )
 
-            # Apply concerns filtering only if supported and concerns are configured
-            if supports_concerns and hasattr(context, "concerns") and context.concerns:
-                # Filter tools based on concerns
-                filtered_tools = []
-                for tool in all_tools:
-                    # Safe access to _meta attribute (not officially part of Tool class)
-                    if hasattr(tool, "_meta"):
-                        tool_concerns = tool._meta.get("concerns", {})  # type: ignore[attr-defined]
-                    else:
-                        tool_concerns = {}
-                    matches = _matches_concerns(tool_concerns, context.concerns)
-                    if matches:
-                        filtered_tools.append(tool)
-
-                logger.info(f"TOOL_LIST - Filtered tools count: {len(filtered_tools)}")
-                return filtered_tools + [health_tool]
-            else:
-                # Return all tools when concerns filtering is not supported or not configured
-                logger.info(
-                    f"TOOL_LIST - Returning all {tool_count} tools (concerns filtering disabled)"
-                )
-                return all_tools + [health_tool]
+            # MCP library will automatically filter tools based on concerns
+            # Return all tools - filtering is handled by MCP
+            logger.info(
+                f"TOOL_LIST - Returning {tool_count} tools (MCP handles concern filtering)"
+            )
+            return all_tools + [health_tool]
 
         # Register resources
         database_resources = get_database_resources()
@@ -326,7 +310,7 @@ async def main() -> None:
 
         @server.list_resources()
         async def handle_list_resources() -> List[Resource]:
-            """List available resources, filtered by concerns."""
+            """List available resources."""
             logger = context.logger
             logger.info("RESOURCE_LIST - Listing available resources")
             resources = database_resources.copy()
@@ -367,30 +351,13 @@ async def main() -> None:
                     f"RESOURCE_LIST_ERROR - Error listing table resources: {e}"
                 )
 
-            # Apply concerns filtering only if supported and concerns are configured
-            if supports_concerns and hasattr(context, "concerns") and context.concerns:
-                # Filter resources based on concerns
-                filtered_resources = []
-                for resource in resources:
-                    resource_concerns = getattr(resource, "_meta", {}).get(
-                        "concerns", {}
-                    )
-                    matches = _matches_concerns(resource_concerns, context.concerns)
-                    if matches:
-                        filtered_resources.append(resource)
-
-                total_resources = len(filtered_resources)
-                logger.info(
-                    f"RESOURCE_LIST - Filtered resources available: {total_resources}"
-                )
-                return filtered_resources
-            else:
-                # Return all resources when concerns filtering is not supported or not configured
-                total_resources = len(resources)
-                logger.info(
-                    f"RESOURCE_LIST - Returning all {total_resources} resources (concerns filtering disabled)"
-                )
-                return resources
+            # MCP library will automatically filter resources based on concerns
+            # Return all resources - filtering is handled by MCP
+            total_resources = len(resources)
+            logger.info(
+                f"RESOURCE_LIST - Returning {total_resources} resources (MCP handles concern filtering)"
+            )
+            return resources
 
         @server.list_resource_templates()
         async def handle_list_resource_templates() -> List[types.ResourceTemplate]:
@@ -450,7 +417,7 @@ async def main() -> None:
 
         @server.list_prompts()
         async def handle_list_prompts(request: ListPromptsRequest) -> ListPromptsResult:
-            """List available prompts, filtered by concerns."""
+            """List available prompts."""
             logger = context.logger
             logger.info("PROMPT_LIST - Listing available prompts")
             try:
@@ -458,40 +425,15 @@ async def main() -> None:
                 prompts = prompt_manager.list_prompts()
                 prompt_count = len(prompts)
                 logger.info(
-                    f"PROMPT_LIST - Found {prompt_count} prompts before filtering"
+                    f"PROMPT_LIST - Found {prompt_count} prompts"
                 )
 
-                # Apply concerns filtering only if supported and concerns are configured
-                if (
-                    supports_concerns
-                    and hasattr(context, "concerns")
-                    and context.concerns
-                ):
-                    # Filter prompts based on concerns
-                    filtered_prompts = []
-                    for prompt in prompts:
-                        # Add _meta attribute if not present
-                        if not hasattr(prompt, "_meta"):
-                            prompt._meta = {}  # type: ignore[attr-defined]
-
-                        prompt_concerns = getattr(prompt, "_meta", {}).get(
-                            "concerns", {}
-                        )
-                        matches = _matches_concerns(prompt_concerns, context.concerns)
-                        if matches:
-                            filtered_prompts.append(prompt)
-
-                    filtered_count = len(filtered_prompts)
-                    logger.info(
-                        f"PROMPT_LIST_SUCCESS - Found {filtered_count} prompts after filtering"
-                    )
-                    return ListPromptsResult(prompts=filtered_prompts)
-                else:
-                    # Return all prompts when concerns filtering is not supported or not configured
-                    logger.info(
-                        f"PROMPT_LIST - Returning all {prompt_count} prompts (concerns filtering disabled)"
-                    )
-                    return ListPromptsResult(prompts=prompts)
+                # MCP library will automatically filter prompts based on concerns
+                # Return all prompts - filtering is handled by MCP
+                logger.info(
+                    f"PROMPT_LIST - Returning {prompt_count} prompts (MCP handles concern filtering)"
+                )
+                return ListPromptsResult(prompts=prompts)
             except Exception as e:
                 logger.error(f"PROMPT_LIST_ERROR - Error listing prompts: {e}")
                 return ListPromptsResult(prompts=[])
@@ -560,42 +502,6 @@ async def main() -> None:
         # Note: update_concerns decorator is not available in the current MCP version
         # This functionality would need to be implemented as a custom tool or handler
         # For now, we'll keep the concerns configuration static
-
-
-def _matches_concerns(item_concerns: dict, context_concerns: dict) -> bool:
-    """
-    Check if item concerns match context concerns based on the new rules:
-    1. If item has no concerns, always match
-    2. For each concern in item:
-       a. If concern key not in context_concerns → no concern match
-       b. If concern value == "-" → match (ignore value comparison)
-       c. If context_concerns[concern_key] == "-" → match (ignore value comparison)
-       d. If context_concerns[concern_key] == item_concerns[concern_key] → match
-    3. OR condition: at least one concern must match
-    """
-    if not item_concerns:
-        return True
-
-    for key, value in item_concerns.items():
-        if key not in context_concerns:
-            # Concern key not in context → match
-            return False
-
-        if value == "-":
-            # value is "-" → match (ignore value comparison)
-            return True
-
-        context_value = context_concerns[key]
-        if context_value == "-":
-            # Context value is "-" → match (ignore value comparison)
-            return True
-
-        if context_value == value:
-            # Values match → match
-            return True
-
-    # No concerns matched
-    return False
 
 
 def cli_main() -> None:
